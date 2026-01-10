@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amp 中文手册 - 前沿编程代理</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #111111;
+            --bg-tertiary: #1a1a1a;
+            --bg-card: #151515;
+            --text-primary: #f5f5f5;
+            --text-secondary: #a0a0a0;
+            --text-muted: #666666;
+            --accent: #6366f1;
+            --accent-hover: #818cf8;
+            --accent-glow: rgba(99, 102, 241, 0.2);
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --border: #2a2a2a;
+            --border-light: #3a3a3a;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans SC', sans-serif;
+            line-height: 1.8;
+            color: var(--text-primary);
+            background: var(--bg-primary);
+        }
+        
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+        
+        /* Header */
+        header {
+            background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+            padding: 60px 0 80px;
+            text-align: center;
+            position: relative;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            height: 400px;
+            background: radial-gradient(ellipse, var(--accent-glow) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        
+        .logo {
+            font-size: 4rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 16px;
+            letter-spacing: -2px;
+        }
+        
+        header p {
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 0 auto 30px;
+        }
+        
+        .hero-badges {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .badge {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+        
+        .badge.highlight {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+        
+        /* Navigation */
+        nav {
+            background: rgba(17, 17, 17, 0.95);
+            backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        nav .container {
+            display: flex;
+            align-items: center;
+            padding: 0 24px;
+        }
+        
+        nav ul {
+            list-style: none;
+            display: flex;
+            gap: 4px;
+            overflow-x: auto;
+            padding: 12px 0;
+        }
+        
+        nav a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        
+        nav a:hover, nav a.active {
+            color: var(--text-primary);
+            background: var(--bg-tertiary);
+        }
+        
+        /* Layout */
+        .layout {
+            display: grid;
+            grid-template-columns: 240px 1fr;
+            gap: 40px;
+            padding: 40px 0;
+        }
+        
+        @media (max-width: 900px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+            .sidebar {
+                display: none;
+            }
+        }
+        
+        /* Sidebar */
+        .sidebar {
+            position: sticky;
+            top: 80px;
+            height: fit-content;
+        }
+        
+        .sidebar h4 {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+            padding-left: 12px;
+        }
+        
+        .sidebar ul {
+            list-style: none;
+        }
+        
+        .sidebar li {
+            margin-bottom: 2px;
+        }
+        
+        .sidebar a {
+            display: block;
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            border-left: 2px solid transparent;
+        }
+        
+        .sidebar a:hover {
+            color: var(--text-primary);
+            background: var(--bg-tertiary);
+            border-left-color: var(--accent);
+        }
+        
+        /* Main Content */
+        main {
+            min-width: 0;
+        }
+        
+        section {
+            margin-bottom: 60px;
+        }
+        
+        section h2 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 24px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--accent);
+            display: inline-block;
+        }
+        
+        section h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 32px 0 16px;
+        }
+        
+        section h4 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--accent-hover);
+            margin: 24px 0 12px;
+        }
+        
+        p {
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+        }
+        
+        ul, ol {
+            color: var(--text-secondary);
+            margin: 16px 0;
+            padding-left: 24px;
+        }
+        
+        li {
+            margin-bottom: 8px;
+        }
+        
+        a {
+            color: var(--accent-hover);
+            text-decoration: none;
+        }
+        
+        a:hover {
+            text-decoration: underline;
+        }
+        
+        /* Code */
+        code {
+            background: var(--bg-tertiary);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+            font-size: 0.875em;
+            color: var(--accent-hover);
+        }
+        
+        pre {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            overflow-x: auto;
+            margin: 16px 0;
+        }
+        
+        pre code {
+            background: none;
+            padding: 0;
+            color: var(--text-secondary);
+        }
+        
+        /* Cards */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+            margin: 20px 0;
+        }
+        
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            transition: all 0.2s;
+        }
+        
+        .card:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+        }
+        
+        .card h4 {
+            color: var(--text-primary);
+            margin: 0 0 8px;
+            font-size: 1.1rem;
+        }
+        
+        .card p {
+            margin: 0;
+            font-size: 0.9rem;
+        }
+        
+        /* Feature List */
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .feature-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .feature-list li:last-child {
+            border-bottom: none;
+        }
+        
+        .feature-list .icon {
+            font-size: 1.25rem;
+            flex-shrink: 0;
+        }
+        
+        /* Table */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 0.9rem;
+        }
+        
+        th, td {
+            text-align: left;
+            padding: 12px 16px;
+            border: 1px solid var(--border);
+        }
+        
+        th {
+            background: var(--bg-tertiary);
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        td {
+            color: var(--text-secondary);
+        }
+        
+        /* Callout */
+        .callout {
+            background: var(--bg-tertiary);
+            border-left: 4px solid var(--accent);
+            padding: 16px 20px;
+            border-radius: 0 8px 8px 0;
+            margin: 20px 0;
+        }
+        
+        .callout.warning {
+            border-left-color: var(--warning);
+        }
+        
+        .callout.success {
+            border-left-color: var(--success);
+        }
+        
+        .callout p {
+            margin: 0;
+        }
+        
+        /* Keyboard */
+        kbd {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-light);
+            border-radius: 4px;
+            padding: 2px 8px;
+            font-family: inherit;
+            font-size: 0.85em;
+            box-shadow: 0 2px 0 var(--border);
+        }
+        
+        /* Footer */
+        footer {
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border);
+            padding: 40px 0;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+        
+        footer a {
+            color: var(--accent-hover);
+        }
+        
+        /* Mobile Nav Toggle */
+        .mobile-toc {
+            display: none;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 24px;
+        }
+        
+        @media (max-width: 900px) {
+            .mobile-toc {
+                display: block;
+            }
+        }
+        
+        .mobile-toc summary {
+            cursor: pointer;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .mobile-toc ul {
+            margin-top: 12px;
+            padding-left: 20px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="logo">Amp</div>
+            <p>前沿编程代理，为你的终端和编辑器而生</p>
+            <div class="hero-badges">
+                <span class="badge">多模型支持</span>
+                <span class="badge">Claude Opus 4.5</span>
+                <span class="badge">GPT-5.1</span>
+                <span class="badge highlight">每日 $10 免费额度</span>
+            </div>
+        </div>
+    </header>
+    
+    <nav>
+        <div class="container">
+            <ul>
+                <li><a href="#why-amp">为什么选择 Amp</a></li>
+                <li><a href="#install">安装</a></li>
+                <li><a href="#usage">使用指南</a></li>
+                <li><a href="#agents-md">AGENTS.md</a></li>
+                <li><a href="#tools">工具系统</a></li>
+                <li><a href="#cli">CLI 命令行</a></li>
+                <li><a href="#config">配置</a></li>
+                <li><a href="#pricing">定价</a></li>
+            </ul>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <div class="layout">
+            <aside class="sidebar">
+                <h4>目录</h4>
+                <ul>
+                    <li><a href="#why-amp">为什么选择 Amp</a></li>
+                    <li><a href="#install">开始安装</a></li>
+                    <li><a href="#usage">使用指南</a></li>
+                    <li><a href="#modes">代理模式</a></li>
+                    <li><a href="#prompting">提示技巧</a></li>
+                    <li><a href="#agents-md">AGENTS.md</a></li>
+                    <li><a href="#handoff">线程交接</a></li>
+                    <li><a href="#tools">工具系统</a></li>
+                    <li><a href="#subagents">子代理</a></li>
+                    <li><a href="#oracle">Oracle</a></li>
+                    <li><a href="#librarian">Librarian</a></li>
+                    <li><a href="#mcp">MCP 服务器</a></li>
+                    <li><a href="#permissions">权限管理</a></li>
+                    <li><a href="#cli">CLI 命令行</a></li>
+                    <li><a href="#config">配置选项</a></li>
+                    <li><a href="#pricing">定价方案</a></li>
+                </ul>
+            </aside>
+            
+            <main>
+                <details class="mobile-toc">
+                    <summary>📑 目录导航</summary>
+                    <ul>
+                        <li><a href="#why-amp">为什么选择 Amp</a></li>
+                        <li><a href="#install">开始安装</a></li>
+                        <li><a href="#usage">使用指南</a></li>
+                        <li><a href="#tools">工具系统</a></li>
+                        <li><a href="#cli">CLI 命令行</a></li>
+                        <li><a href="#config">配置选项</a></li>
+                        <li><a href="#pricing">定价方案</a></li>
+                    </ul>
+                </details>
+                
+                <!-- Why Amp -->
+                <section id="why-amp">
+                    <h2>🚀 为什么选择 Amp</h2>
+                    <p>Amp 是面向终端和编辑器的前沿编程代理，基于以下四大原则构建：</p>
+                    
+                    <div class="card-grid">
+                        <div class="card">
+                            <h4>🔓 无限制 Token 使用</h4>
+                            <p>不限制模型输出，让 AI 充分发挥能力完成复杂任务</p>
+                        </div>
+                        <div class="card">
+                            <h4>🧠 始终使用最佳模型</h4>
+                            <p>Opus 4.5、GPT-5.1 等顶级模型，各司其职</p>
+                        </div>
+                        <div class="card">
+                            <h4>⚡ 原始模型能力</h4>
+                            <p>直接获得模型的原始能力，无额外抽象层</p>
+                        </div>
+                        <div class="card">
+                            <h4>🔄 随模型演进</h4>
+                            <p>紧跟前沿，无历史包袱，无向后兼容负担</p>
+                        </div>
+                    </div>
+                    
+                    <h3>核心特性</h3>
+                    <ul class="feature-list">
+                        <li>
+                            <span class="icon">🎯</span>
+                            <div><strong>多模型架构</strong> — Opus 4.5、GPT-5.1 以及快速模型，各取所长</div>
+                        </li>
+                        <li>
+                            <span class="icon">💡</span>
+                            <div><strong>固执己见</strong> — 你始终在使用 Amp 的精华部分，不好用的功能会被砍掉</div>
+                        </li>
+                        <li>
+                            <span class="icon">🧵</span>
+                            <div><strong>线程管理</strong> — 保存和分享你与 Amp 的交互，就像版本控制一样</div>
+                        </li>
+                        <li>
+                            <span class="icon">🔌</span>
+                            <div><strong>IDE 集成</strong> — 支持 VS Code、Cursor、JetBrains、Neovim 等编辑器</div>
+                        </li>
+                    </ul>
+                </section>
+                
+                <!-- Install -->
+                <section id="install">
+                    <h2>📦 开始安装</h2>
+                    
+                    <h3>命令行安装 (推荐)</h3>
+                    <p>适用于 macOS、Linux 和 WSL，支持自动更新：</p>
+                    <pre><code>curl -fsSL https://ampcode.com/install.sh | bash</code></pre>
+                    
+                    <p>运行交互模式（首次运行会提示登录）：</p>
+                    <pre><code>amp</code></pre>
+                    
+                    <p>也可以通过 npm 安装：</p>
+                    <pre><code>npm install -g @sourcegraph/amp</code></pre>
+                    
+                    <h3>编辑器扩展</h3>
+                    <table>
+                        <tr>
+                            <th>编辑器</th>
+                            <th>安装方式</th>
+                        </tr>
+                        <tr>
+                            <td>VS Code / Cursor</td>
+                            <td>从 VS Code Marketplace 安装 <code>sourcegraph.amp</code></td>
+                        </tr>
+                        <tr>
+                            <td>JetBrains 系列</td>
+                            <td>安装 CLI 后运行 <code>amp --jetbrains</code></td>
+                        </tr>
+                        <tr>
+                            <td>Neovim</td>
+                            <td>安装 <a href="https://github.com/sourcegraph/amp.nvim">amp.nvim</a> 插件</td>
+                        </tr>
+                    </table>
+                </section>
+                
+                <!-- Usage -->
+                <section id="usage">
+                    <h2>📖 使用指南</h2>
+                    
+                    <h3 id="modes">代理模式</h3>
+                    <p>Amp 提供两种模式：</p>
+                    <table>
+                        <tr>
+                            <th>模式</th>
+                            <th>特点</th>
+                            <th>适用场景</th>
+                        </tr>
+                        <tr>
+                            <td><code>smart</code></td>
+                            <td>无限制使用最先进模型，最大能力和自主性</td>
+                            <td>复杂任务、代码重构、架构设计</td>
+                        </tr>
+                        <tr>
+                            <td><code>rush</code></td>
+                            <td>更快、更便宜、能力稍弱</td>
+                            <td>小型、明确定义的任务</td>
+                        </tr>
+                    </table>
+                    
+                    <p>在 CLI 中按 <kbd>Ctrl</kbd>+<kbd>O</kbd> 打开命令面板，输入 <code>mode</code> 切换模式。</p>
+                    
+                    <h3 id="prompting">提示技巧</h3>
+                    <div class="callout">
+                        <p>💡 第一条提示至关重要，它决定了整个对话的方向。使用 <kbd>Cmd/Ctrl</kbd>+<kbd>Enter</kbd> 提交，提醒自己认真对待每一条提示。</p>
+                    </div>
+                    
+                    <ul>
+                        <li><strong>明确表达</strong> — 用 "做 X" 而不是 "你能做 X 吗？"</li>
+                        <li><strong>保持简短聚焦</strong> — 大任务拆分成多个线程，每个线程专注一个子任务</li>
+                        <li><strong>提供已知信息</strong> — 告诉代理查看哪些文件、运行什么命令</li>
+                        <li><strong>明确不写代码</strong> — 如果只想研究和规划，说 "只做计划，不要写代码"</li>
+                        <li><strong>及时放弃噪音线程</strong> — 失败尝试积累太多时，开启新线程更好</li>
+                    </ul>
+                    
+                    <h4>示例提示词</h4>
+                    <pre><code># 修复构建错误
+运行 `pnpm run build` 并修复所有错误
+
+# 查看本地开发
+查看 `http://localhost:3000` 的 UI 组件，让它看起来更简洁
+
+# Git 操作
+运行 git blame 查看这个文件，找出谁添加了那个新标题
+
+# 并行转换
+用 3 个子代理把这 5 个 CSS 文件转换成 Tailwind
+
+# 只做规划
+研究如何添加实时聊天功能，但不要写代码</code></pre>
+                </section>
+                
+                <!-- AGENTS.md -->
+                <section id="agents-md">
+                    <h2>📋 AGENTS.md 配置</h2>
+                    <p>Amp 从 <code>AGENTS.md</code> 文件读取代码库结构、构建/测试命令和编码规范。</p>
+                    
+                    <table>
+                        <tr>
+                            <th>文件位置</th>
+                            <th>用途示例</th>
+                        </tr>
+                        <tr>
+                            <td><code>AGENTS.md</code> (当前目录及父目录)</td>
+                            <td>架构、构建/测试命令、内部 API 概述</td>
+                        </tr>
+                        <tr>
+                            <td><code>$HOME/.config/amp/AGENTS.md</code></td>
+                            <td>个人偏好、设备特定命令</td>
+                        </tr>
+                    </table>
+                    
+                    <h3>文件引用</h3>
+                    <p>在 AGENTS.md 中使用 @ 引用其他文件：</p>
+                    <pre><code>参见 @doc/style.md 和 @specs/**/*.md
+
+提交时参考 @doc/git-commit-instructions.md</code></pre>
+                    
+                    <h3>条件应用 (Globs)</h3>
+                    <p>使用 YAML front matter 的 <code>globs</code> 字段，让规则只在特定文件类型时生效：</p>
+                    <pre><code>---
+globs:
+  - '**/*.ts'
+  - '**/*.tsx'
+---
+
+遵循以下 TypeScript 规范：
+- 永远不使用 `any` 类型
+- 优先使用 interface 而非 type
+- ...</code></pre>
+                </section>
+                
+                <!-- Handoff -->
+                <section id="handoff">
+                    <h2>🔄 线程交接 (Handoff)</h2>
+                    <p>Amp 在保持线程小而聚焦时效果最好。使用命令面板中的 <code>handoff</code> 命令，将当前线程的相关文件和上下文交接到新线程。</p>
+                    
+                    <h4>交接示例</h4>
+                    <pre><code># 扩展功能
+现在也为团队实现这个功能，不只是个人用户
+
+# 执行计划
+执行创建计划的第一阶段
+
+# 全局修复
+检查代码库的其余部分，找到需要同样修复的地方</code></pre>
+                    
+                    <div class="callout warning">
+                        <p>⚠️ Amp 不支持压缩 (Compaction)。当线程积累太多噪音时，使用交接创建新线程更有效。</p>
+                    </div>
+                </section>
+                
+                <!-- Tools -->
+                <section id="tools">
+                    <h2>🛠️ 工具系统</h2>
+                    <p>工具是底层模型完成任务的手段。运行 <code>amp tools list</code> 查看所有可用工具。</p>
+                    
+                    <h3 id="subagents">子代理 (Subagents)</h3>
+                    <p>Amp 可以通过 Task 工具生成子代理，用于独立执行复杂任务。每个子代理有自己的上下文窗口和工具访问权限。</p>
+                    
+                    <div class="callout">
+                        <p>适用场景：可拆分为独立部分的多步骤任务、产生大量输出的操作、不同代码区域的并行工作。</p>
+                    </div>
+                    
+                    <p><strong>注意</strong>：子代理独立工作，无法互相通信，你无法在任务中途指导它们。主代理只接收最终摘要。</p>
+                    
+                    <h3 id="oracle">Oracle (神谕)</h3>
+                    <p>Amp 可以访问一个强大的"第二意见"模型（目前使用 GPT-5），更适合复杂推理或分析任务，但速度稍慢、成本稍高。</p>
+                    
+                    <h4>使用示例</h4>
+                    <pre><code># 代码审查
+使用 oracle 审查最后一次提交的更改
+
+# 寻求更好方案
+问问 oracle 有没有更好的解决方案
+
+# 调试复杂问题
+这些文件有 bug... 帮我修复，尽可能多用 oracle</code></pre>
+                    
+                    <h3 id="librarian">Librarian (图书管理员)</h3>
+                    <p>Librarian 可以搜索远程代码库，包括 GitHub 上的所有公开代码和你的私有仓库。适用于跨仓库研究或查阅框架/库源码。</p>
+                    
+                    <div class="callout success">
+                        <p>✅ 在 <a href="https://ampcode.com/settings">设置页面</a> 配置 GitHub 连接即可使用。选择私有仓库可让 Librarian 访问它们。</p>
+                    </div>
+                    
+                    <h3 id="mcp">MCP 服务器</h3>
+                    <p>通过 <a href="https://modelcontextprotocol.io">MCP (Model Context Protocol)</a> 添加额外工具。在配置文件的 <code>amp.mcpServers</code> 中配置：</p>
+                    
+                    <pre><code>"amp.mcpServers": {
+  "playwright": {
+    "command": "npx",
+    "args": ["-y", "@playwright/mcp@latest", "--headless"]
+  },
+  "semgrep": {
+    "url": "https://mcp.semgrep.ai/mcp"
+  },
+  "linear": {
+    "command": "npx",
+    "args": ["mcp-remote", "https://mcp.linear.app/sse"]
+  }
+}</code></pre>
+                    
+                    <p><strong>提示</strong>：工具太多会降低模型性能。选择暴露少量高质量工具的 MCP 服务器，禁用不使用的工具。</p>
+                </section>
+                
+                <!-- Permissions -->
+                <section id="permissions">
+                    <h2>🔐 权限管理</h2>
+                    <p>在配置文件的 <code>amp.permissions</code> 中配置工具使用权限：</p>
+                    
+                    <pre><code>"amp.permissions": [
+  // git commit 前询问
+  {
+    "tool": "Bash",
+    "matches": { "cmd": "*git commit*" },
+    "action": "ask"
+  },
+  // 拒绝 python 命令
+  {
+    "tool": "Bash",
+    "matches": { "cmd": ["*python *", "*python3 *"] },
+    "action": "reject"
+  },
+  // 允许所有 playwright MCP 工具
+  { "tool": "mcp__playwright_*", "action": "allow" },
+  // 其他 MCP 工具需询问
+  { "tool": "mcp__*", "action": "ask" }
+]</code></pre>
+                    
+                    <p>可用动作：<code>allow</code> (允许)、<code>reject</code> (拒绝)、<code>ask</code> (询问)、<code>delegate</code> (委托给外部程序)</p>
+                </section>
+                
+                <!-- CLI -->
+                <section id="cli">
+                    <h2>💻 CLI 命令行</h2>
+                    
+                    <h3>基本用法</h3>
+                    <pre><code># 交互模式
+amp
+
+# 管道输入
+echo "提交所有更改" | amp
+
+# 执行模式 (-x)
+amp -x "这个文件夹里哪些是 markdown 文件？"
+
+# 允许所有操作
+amp --dangerously-allow-all -x "用 sed 替换 README 中的 2024 为 2025"</code></pre>
+                    
+                    <h3>Shell 模式</h3>
+                    <p>以 <code>$</code> 开头直接执行 shell 命令，命令和输出会包含在上下文中：</p>
+                    <pre><code>$ git status
+$ ls -la</code></pre>
+                    
+                    <p>使用 <code>$$</code> 进入隐身模式，命令执行但不加入上下文。</p>
+                    
+                    <h3>JSON 流输出</h3>
+                    <p>使用 <code>--stream-json</code> 获取结构化输出：</p>
+                    <pre><code>amp --execute "3 + 5 = ?" --stream-json</code></pre>
+                    
+                    <h3>常用快捷键</h3>
+                    <table>
+                        <tr>
+                            <th>快捷键</th>
+                            <th>功能</th>
+                        </tr>
+                        <tr>
+                            <td><kbd>Ctrl</kbd>+<kbd>O</kbd></td>
+                            <td>打开命令面板</td>
+                        </tr>
+                        <tr>
+                            <td><kbd>Tab</kbd></td>
+                            <td>导航到之前的消息</td>
+                        </tr>
+                        <tr>
+                            <td><kbd>Ctrl</kbd>+<kbd>V</kbd></td>
+                            <td>粘贴图片</td>
+                        </tr>
+                        <tr>
+                            <td><kbd>Shift</kbd>+<kbd>Enter</kbd></td>
+                            <td>插入换行</td>
+                        </tr>
+                    </table>
+                </section>
+                
+                <!-- Config -->
+                <section id="config">
+                    <h2>⚙️ 配置选项</h2>
+                    
+                    <h3>配置文件位置</h3>
+                    <table>
+                        <tr>
+                            <th>操作系统</th>
+                            <th>路径</th>
+                        </tr>
+                        <tr>
+                            <td>macOS / Linux</td>
+                            <td><code>~/.config/amp/settings.json</code></td>
+                        </tr>
+                        <tr>
+                            <td>Windows</td>
+                            <td><code>%USERPROFILE%\.config\amp\settings.json</code></td>
+                        </tr>
+                    </table>
+                    
+                    <h3>常用设置</h3>
+                    <table>
+                        <tr>
+                            <th>设置项</th>
+                            <th>说明</th>
+                            <th>默认值</th>
+                        </tr>
+                        <tr>
+                            <td><code>amp.anthropic.thinking.enabled</code></td>
+                            <td>启用 Claude 扩展思考能力</td>
+                            <td><code>true</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>amp.notifications.enabled</code></td>
+                            <td>任务完成时播放通知音</td>
+                            <td><code>true</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>amp.todos.enabled</code></td>
+                            <td>启用 TODO 任务追踪</td>
+                            <td><code>true</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>amp.tools.disable</code></td>
+                            <td>禁用特定工具 (支持通配符)</td>
+                            <td><code>[]</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>amp.tools.stopTimeout</code></td>
+                            <td>工具执行超时 (秒)</td>
+                            <td><code>300</code></td>
+                        </tr>
+                    </table>
+                    
+                    <h3>代理和证书</h3>
+                    <p>在企业网络中使用时，设置以下环境变量：</p>
+                    <pre><code>export HTTP_PROXY=your-proxy-url
+export HTTPS_PROXY=your-proxy-url
+export NODE_EXTRA_CA_CERTS=/path/to/certificates.pem</code></pre>
+                </section>
+                
+                <!-- Pricing -->
+                <section id="pricing">
+                    <h2>💰 定价方案</h2>
+                    
+                    <div class="card-grid">
+                        <div class="card">
+                            <h4>🎁 免费额度</h4>
+                            <p>每日 $10 免费额度，可使用所有模式和模型（包括 Opus 4.5）。新用户注册还可获得 $10 永久积分。</p>
+                        </div>
+                        <div class="card">
+                            <h4>💳 付费使用</h4>
+                            <p>用完每日免费额度后消耗付费积分。成本直接透传，个人和非企业工作区无加价。</p>
+                        </div>
+                        <div class="card">
+                            <h4>🏢 企业版</h4>
+                            <p>价格高 50%，包含：SSO、零数据保留、高级线程可见性控制、API 分析、可配置线程保留期。</p>
+                        </div>
+                    </div>
+                    
+                    <div class="callout">
+                        <p>📧 企业版咨询：<a href="mailto:amp-devs@ampcode.com">amp-devs@ampcode.com</a></p>
+                    </div>
+                </section>
+                
+                <!-- Keyboard Shortcuts -->
+                <section id="shortcuts">
+                    <h2>⌨️ 键盘快捷键 (VS Code)</h2>
+                    
+                    <h4>macOS</h4>
+                    <table>
+                        <tr>
+                            <th>命令</th>
+                            <th>快捷键</th>
+                        </tr>
+                        <tr>
+                            <td>新建线程</td>
+                            <td><kbd>Cmd</kbd>+<kbd>L</kbd></td>
+                        </tr>
+                        <tr>
+                            <td>聚焦/隐藏侧边栏</td>
+                            <td><kbd>Cmd</kbd>+<kbd>I</kbd></td>
+                        </tr>
+                        <tr>
+                            <td>切换线程</td>
+                            <td><kbd>Cmd</kbd>+<kbd>K</kbd></td>
+                        </tr>
+                        <tr>
+                            <td>下一个线程</td>
+                            <td><kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>]</kbd></td>
+                        </tr>
+                        <tr>
+                            <td>上一个线程</td>
+                            <td><kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>[</kbd></td>
+                        </tr>
+                    </table>
+                    
+                    <h4>Windows / Linux</h4>
+                    <table>
+                        <tr>
+                            <th>命令</th>
+                            <th>快捷键</th>
+                        </tr>
+                        <tr>
+                            <td>新建线程</td>
+                            <td><kbd>Ctrl</kbd>+<kbd>L</kbd></td>
+                        </tr>
+                        <tr>
+                            <td>聚焦/隐藏侧边栏</td>
+                            <td><kbd>Ctrl</kbd>+<kbd>I</kbd></td>
+                        </tr>
+                        <tr>
+                            <td>切换线程</td>
+                            <td><kbd>Ctrl</kbd>+<kbd>K</kbd></td>
+                        </tr>
+                    </table>
+                </section>
+                
+                <!-- Support -->
+                <section id="support">
+                    <h2>🆘 获取帮助</h2>
+                    <ul>
+                        <li>Twitter: <a href="https://x.com/AmpCode">@AmpCode</a></li>
+                        <li>邮箱: <a href="mailto:amp-devs@ampcode.com">amp-devs@ampcode.com</a></li>
+                        <li>社区: <a href="https://buildcrew.team">Build Crew</a></li>
+                    </ul>
+                    
+                    <h3>支持的平台</h3>
+                    <p>macOS、Linux、Windows (推荐 WSL)。JetBrains 集成支持所有 IDE (2025.1+)。</p>
+                </section>
+            </main>
+        </div>
+    </div>
+    
+    <footer>
+        <div class="container">
+            <p>基于 <a href="https://ampcode.com/manual">Amp 官方手册</a> 翻译</p>
+            <p style="margin-top: 8px;">© 2025 Sourcegraph · <a href="https://ampcode.com">ampcode.com</a></p>
+        </div>
+    </footer>
+</body>
+</html>
