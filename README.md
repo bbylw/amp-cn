@@ -2,7 +2,7 @@
 
 基于 [Amp 官方手册](https://ampcode.com/manual) 的完整中文翻译版本。
 
-![Amp Logo](https://static.ampcode.com/content/amp-cli-20251026-0.mp4)
+![Amp Logo](https://static.ampcode.com/content/amp-vscode-1.png)
 
 ## 关于 Amp
 
