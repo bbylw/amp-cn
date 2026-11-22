@@ -1,100 +1,62 @@
-# amp-cn：Amp 中文手册站点
+# Amp 中文手册
 
-这是 <https://amp.ndjp.net> 的源码仓库——一份中文的 Amp 文档站点。内容译自 [Amp 官方文档](https://ampcode.com/docs)，站点本身用 [Nimbus](https://nimbus-docs.com)（Cloudflare 的 Astro 文档框架）以静态方式构建，产物发布在 GitHub Pages。
+[Amp](https://ampcode.com) 是为前沿模型打造的编程 agent 与开发环境。它不只是一个终端工具，而是一套贯穿网页、桌面、手机和 CLI 的工作方式：你把要做的事说清楚，agent 自己跑测试、开浏览器、改代码，先证明改动可用，再交给你看。
 
-本 README 说明这个站点怎么组成、怎么改、怎么发。想了解 Amp 是什么，请看站点首页或官方文档。
+<https://amp.ndjp.net> 是 Amp 官方文档的中文翻译站点，下列内容即站点各页的入口。
 
-## 站点提供什么
+## Amp 的几个关键点
 
-- **74 篇中文文档**，目录结构与官方文档树对应：从入门、模型、提示、工具，到 Orbs、工作区、应用、协作、集成、定制、CLI、参考、企业版。
-- **全站搜索**（Pagefind，构建时生成索引）、侧边栏分组、目录、面包屑、明暗主题。
-- **给 agent 的接口**：每页的 Markdown 版本（`/path/index.md`）、每节的 `llms.txt` 与全站 `llms-full.txt`，页面里还有指向它们的 `<AgentDirective />`。
-- **中文分享卡片**：站点与每页各有一张 Open Graph 图，由 Satori 渲染，内置子集化的 Noto Sans SC，中文标题不会变成方块。
-- **官方标识**：`public/favicon.svg` 直接用 Amp 官方图标，页头 logo 与分享卡片共用 `src/components/logo.ts` 里的同一份字标路径。
-- 链接悬停预取（`prefetch.prefetchAll`），整页导航几乎即时。
+- **🧠 多模型** — 模型选择器同时决定模型与思考强度，并标出每个模型由谁付费。不想挑就用 Staff Pick（目前是 Claude Opus 5.5）。详见[模型选择器](/models)。
+- **☁️ Orbs** — 每个线程一台全新的云端机器，代码、依赖、插件都已就绪。合上笔记本，活儿照跑；orb 休眠不收费，再发提示时会话、文件和服务都还在。详见 [Orbs](/orbs)。
+- **📱 无处不在** — 在 iPhone 上发起，在 Mac 上查看，在 TUI 里继续。网页、macOS、Windows、Linux、iOS、Android 看的是同一批[线程](/workspace/threads)，就绪时通知你。详见[应用](/apps)。
+- **🎯 固执己见** — 你始终用到 Amp 最好的部分。团队自己不用、不爱用的功能会被砍掉。
+- **⚡ 站在前沿** — 模型走到哪，Amp 跟到哪，没有向后兼容的包袱。
+- **🧵 线程** — 与 Amp 的每次交互都可保存、跨设备继续、分享给同事。
 
-## 技术栈
+## 在哪儿用
 
-| 层 | 选择 |
+| 入口 | 说明 |
 | --- | --- |
-| 框架 | [Nimbus](https://nimbus-docs.com) `@cloudflare/nimbus-docs` 0.20 · Astro 7（`output: "static"`） |
-| 运行时 / 包管理 | bun |
-| 样式 | Tailwind CSS v4，主题令牌在 `src/styles/globals.css` |
-| 内容 | MDX，`src/content/docs/` |
-| 图片 / 卡片 | Satori + `@resvg/resvg-js` |
-| 部署 | GitHub Actions → GitHub Pages，自定义域名经 `public/CNAME` |
+| 网页 | 打开 [ampcode.com](https://ampcode.com)，注册后即可发起线程，无需安装 |
+| 桌面与手机 | [原生应用](/apps)提供听写、跨应用分享和通知；agent 跑在 orb 里，设备上不用装任何东西 |
+| 终端 | [CLI](/cli) 可在自己的机器、编辑器终端或脚本里运行 Amp |
+| Puck | 帮你启动和协调 agent 的个人助理，见 [Puck](/workspace/puck) |
 
-## 本地开发
+## 三步开始
 
-```bash
-bun install
-bun run dev        # http://localhost:4321
-bun run build      # 产物在 dist/
-bun run preview    # 预览构建结果
-```
+1. **登录** — 在 [ampcode.com](https://ampcode.com) 注册；orb 跑在 Amp 云端，无需安装。
+2. **添加代码** — 用 Git 仓库创建一个[项目](/workspace)，或以「No Project」开始。
+3. **在 Orb 中运行 agent** — 新线程里把执行位置设为 **New Orb**，选好项目，描述你想要的结果。
 
-提交前的检查：
+想在终端里用：
 
 ```bash
-bun run lint:docs                    # 文稿 lint
-bun run typecheck                    # astro check
-bunx @cloudflare/nimbus-docs check   # 配置、结构、链接与类型自检
+curl -fsSL https://ampcode.com/install.sh | bash
+amp
 ```
 
-## 目录
+首次运行会提示登录；也支持 Homebrew 与 npm（macOS / Linux / WSL，Windows 请走 WSL）。
 
-```
-astro.config.ts            # 站点元信息、侧边栏分组、lint 规则、预取
-src/pages/
-  index.astro              # 落地页
-  og.png.ts                # 站点分享卡片
-  og/[...slug].ts          # 每页分享卡片
-  og/_card.ts              # 卡片版式与字体（两份路由共用一个下划线文件）
-  og/_fonts/               # Inter 400/500 + 子集化 Noto Sans SC 400/500、OFL
-  llms.txt.ts …            # llms.txt / llms-full.txt / 每页 .md / robots.txt
-src/content/docs/          # 74 篇 mdx，目录即侧边栏分组
-src/components/
-  logo.ts                  # 官方 amp 字标路径，Header 与分享卡片共用
-  Header.astro、Logo.astro # 页头
-  ui/                      # Nimbus 注册表组件（dialog、search 等）
-public/
-  CNAME                    # amp.ndjp.net，随构建发布
-  favicon.svg              # 官方图标
-  _headers                 # 静态托管响应头
-.github/workflows/deploy.yml
-```
+## 按仓库定制
 
-## 写一篇文档
+Amp 的工作方式可以写进仓库，跟着项目走：
 
-在 `src/content/docs/` 的对应目录里放一个 `.mdx`，侧边栏会自动收录：
+- **[AGENTS.md](/customization/agents-md)** — 团队约定、构建与测试命令。
+- **[Skills](/customization/skills)** — 按需加载的流程手册。
+- **[MCP](/customization/mcp)** 与 **[插件](/customization/plugins)** — 接外部工具、加自定义命令。
 
-```mdx
----
-title: 页面标题
-description: 一句话摘要。
----
+## 文档地图
 
-正文。H1 来自 `title`，正文里不要重复。
+| 主题 | 页面 |
+| --- | --- |
+| 入门 | [介绍](/introduction) · [快速开始](/get-started) |
+| 日常使用 | [提示](/prompting) · [工具](/tools) · [设计 UI](/designing-ui) |
+| 云端 | [Orbs](/orbs) · [自托管](/orbs/self-hosted) · [规格与计费](/orbs/sizes) |
+| 工作区 | [项目](/workspace) · [线程](/workspace/threads) · [Spaces](/workspace/spaces) |
+| 客户端 | [应用](/apps) · [CLI](/cli) · [Boxes](/boxes) |
+| 团队 | [协作](/collaborate) · [集成](/integrations) · [企业版](/enterprise) |
+| 其它 | [参考](/reference) · [定价](/pricing) · [支持](/support) |
 
-## 小节标题
-```
+## 关于本站
 
-- `sidebar.order` 控制排序，`sidebar.label` 改侧边栏短标题，`sidebar.hidden: true` 建页但不列出。
-- 目录的 `index.mdx` 是分组落地页，`sidebar.group.label` 决定分组名；顶层顺序在 `astro.config.ts` 的 `sidebar.items`。
-- 共享片段放 `src/content/partials/`，用 `<Render file="..." />` 引用，不要直接 import `.mdx`。
-- 术语与官方一致；agent 不译作「代理」，用 agent / 子 agent / 主 agent。
-
-## 改站点的外观
-
-- **颜色与排版**：`src/styles/globals.css` 里的主题令牌。
-- **页头 logo**：改 `src/components/logo.ts`。`viewBox` 裁掉了官方字标的空白边，`Header.astro`、`Logo.astro` 和分享卡片都读它。
-- **页头链接与布局**：`src/components/Header.astro`。
-- **分享卡片**：`src/pages/og/_card.ts`。卡片的字体是子集，若新页面标题出现缺字，按文件顶部注释重新生成：从 Google Fonts 的 `NotoSansSC[wght].ttf` 用 `fontTools.varLib.instancer` 实例化 400/500 两档，再按站点用字 `pyftsubset --text-file` 裁剪，连同 `OFL.txt` 放入 `src/pages/og/_fonts/`。改完跑一次构建，`[og]` 前缀的缺字告警应为 0。
-
-## 部署
-
-推送到 `main` 后，`.github/workflows/deploy.yml` 用 bun 安装、构建，把 `dist/` 上传并发布到 GitHub Pages；也可以在 Actions 页面手动触发。仓库的 Pages 来源需设为 **GitHub Actions**，自定义域名由 `public/CNAME` 与 DNS 共同决定。
-
-## 说明
-
-本站是社区翻译，与原文冲突时以[官方文档](https://ampcode.com/docs)为准。原文最近一次同步：2026-11-22。
+站点用 [Nimbus](https://nimbus-docs.com)（Cloudflare 的 Astro 文档框架）静态构建，部署在 GitHub Pages。正文是社区翻译，术语尽量与官方一致，与原文冲突时以[官方文档](https://ampcode.com/docs)为准；原文最近一次同步：2026-11-22。
