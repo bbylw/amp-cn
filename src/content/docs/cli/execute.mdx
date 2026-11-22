@@ -1,0 +1,58 @@
+---
+title: 执行模式
+description: 用 -x / -ox 在脚本与 CI 里运行。
+sidebar:
+  order: 2
+  group:
+    label: CLI
+---
+
+用 `-x` 或 `--execute` 启动执行模式：把消息发给代理，等它结束本轮，打印最终消息后退出。用 `-ox` 则在 Amp 服务器的 orb 中运行同样的提示。
+
+```bash
+amp -x "这个文件夹里哪些是 markdown 文件？只打印文件名。"
+echo "这里用的是什么包管理器？" | amp -x
+
+# 同时看管道输入和提示
+cat ~/.vimrc | amp -x "用的是哪个配色方案？"
+```
+
+重定向 stdout 时会自动进入执行模式：
+
+```bash
+echo "what is 2+2?" | amp > response.txt
+```
+
+## 不改设置临时指定 MCP
+
+```bash
+amp --mcp-config '{"everything": {"command": "npx", "args": ["-y", "@modelcontextprotocol/server-everything"]}}' -x "What tools are available to you?"
+```
+
+## 计时
+
+```bash
+amp -x "summarize this repo" --timings
+```
+
+计时报告输出到 stderr，响应仍在 stdout，因此也能配合 `--stream-json` 和输出重定向使用。
+
+## 启动 Orb 与 Runner 线程
+
+```bash
+amp -ox "Investigate why the latest CI run on main failed"
+
+amp -x "Run the tests and fix any failures" --executor runner:mac-mini
+```
+
+用 `--runner-dir` 指定 runner 上的其它目录，用 `--attach <path>` 上传文件并把附件 URL 加入消息（可重复）。
+
+## 非交互环境
+
+脚本和 CI/CD 中，把访问令牌放进环境变量：
+
+```bash
+export AMP_API_KEY=your-access-token-here
+```
+
+令牌以 `sgamp_` 开头，在 Settings 中创建。CLI 会拒绝 `amp login` 保存的短期会话令牌，因为它一小时内过期且无法从环境变量刷新。要以工作区身份（而非个人身份）运行流水线，请使用服务账号的 API Key。

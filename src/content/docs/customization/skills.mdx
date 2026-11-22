@@ -1,0 +1,76 @@
+---
+title: Skills
+description: 把可复用的流程打包成技能。
+sidebar:
+  order: 2
+  group:
+    label: 定制
+---
+
+Skill 是包含特定任务说明和可选资源的目录。Amp 内置了一些技能，你也可以把技能放进项目、装到某台机器上，或发布给自己 / 工作区。
+
+## 创建与安装
+
+Amp 内置 `building-skills` 技能，可以直接让它帮你做：
+
+```bash
+为这个应用创建一个部署到预发环境的项目技能
+为我的发布说明流程创建一个个人技能
+从 github.com/example/engineering-skills 安装技能
+```
+
+项目技能保存在 `.agents/skills/` 下，可随项目提交。个人技能在你使用 Amp 的所有地方可用。从 GitHub 仓库、Git URL 或本地路径安装：
+
+```bash
+amp skill add <source>
+```
+
+加 `--global` 只装到当前机器的 `~/.config/agents/skills/`。
+
+## 技能格式
+
+每个技能是一个目录，里面有带 YAML frontmatter 的 `SKILL.md`：
+
+```bash
+---
+name: my-skill
+description: 这个技能做什么
+---
+
+# My Skill
+
+给代理的详细说明……
+```
+
+Amp 会把所有技能的 `name` 和 `description` 列给模型，模型据此决定何时加载；调用时才加载 `SKILL.md` 的其余内容。技能目录里还可以放脚本、模板和参考文件，代理可按相对路径访问。
+
+## 在技能里定义 MCP 服务器
+
+技能可以在同级的 `mcp.json` 或 `SKILL.md` frontmatter 的 `mcpServers` 字段中定义 MCP 服务器（两者都有时，Amp 使用 `mcpServers`）。
+
+```json
+{
+  "chrome-devtools": {
+    "command": "npx",
+    "args": ["-y", "chrome-devtools-mcp@latest"],
+    "includeTools": ["navigate_*", "take_screenshot", "click", "fill*"]
+  }
+}
+```
+
+技能定义的服务在技能加载前对模型隐藏，这样能保持工具列表干净。
+
+## 查看与重载
+
+```bash
+amp skills list
+amp skills list --json
+```
+
+也可以在 CLI 命令面板运行 `skills: list`。要让当前会话重新扫描，使用 `reload_skills`。
+
+## 技能仓库
+
+个人技能和使用 Amp 的所有地方共享，工作区技能对工作区全体成员可用，Amp 为每个范围维护独立的 Git 仓库。最简单的方式是直接让 Amp 在对话里处理，例如「为写发布说明创建一个个人技能」「把这个共享技能导入我的工作区技能」。Amp 会找到正确的仓库、准备改动、审查并提交，推送前会征求你同意。
+
+直接编辑仓库时，每个技能放在顶层目录、`SKILL.md` 直接位于其中，目录名必须与 `name` 一致。托管仓库上限为 200 个技能；每个技能最多 200 个文件、单文件 10 MiB、单技能 25 MiB、仓库 25 MiB，且只接受文本文件。

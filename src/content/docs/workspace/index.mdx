@@ -1,0 +1,54 @@
+---
+title: 项目
+description: 把 Git 仓库接入 Amp。
+sidebar:
+  order: 1
+  group:
+    label: 工作区
+---
+
+项目把一个代码库相关的一切放在一起：主仓库、在它上面工作的线程，以及该代码的每个 orb 共享的设置。项目还可以包含额外仓库，每个 orb 会把它们克隆到主仓库旁边。
+
+项目支持 GitLab、Bitbucket 和其它 HTTPS Git 托管，不只 GitHub——用 orb 不需要把仓库搬到 GitHub。私有 GitLab 仓库请[连接 GitLab](/integrations)；其它托管商的私有仓库需要先配置 Git 凭据。
+
+也可以不用项目：选择 **No Project** 的线程会得到一个干净、无仓库的 orb，适合调研或一次性脚本。
+
+## 创建项目
+
+1. 打开 [Projects](https://ampcode.com/projects)，点击 **New Project**
+2. 选择代码来源： **GitHub** — 先在集成设置中连接 GitHub，再选仓库。私有仓库靠该连接克隆与推送；公开仓库无需连接 **GitLab** — 连接 GitLab 后选项目，或粘贴 HTTPS 克隆地址 **Bitbucket / 其它 Git 托管** — 粘贴 HTTPS 克隆地址。公开仓库直接可用；私有仓库先建项目，再在 **Secrets & Env Vars** 里加凭据 **Amp 托管** — 选 **Start From Scratch**，Amp 为你创建并托管一个空仓库，用 `amp clone owner/project-name` 克隆
+3. 选择归属：工作区项目对同事可见，私有项目只有你可见
+
+## 用 CLI 创建
+
+```bash
+# 映射已有仓库
+amp projects create acme/widgets
+amp projects create https://git.example.com/acme/widgets
+
+# Amp 托管的空仓库
+amp projects create --amp-hosted --name widgets
+
+# 把仅存在于本机的仓库推进新项目
+cd myproject
+amp projects create --push
+```
+
+## 主要设置
+
+| 设置 | 说明 |
+| --- | --- |
+| Git Repository | Amp 克隆到每个 orb 的仓库。可为同一仓库的其它地址添加 **Git Remote Aliases** |
+| Base Branch | orb 检出的分支，也是 Ship 的目标分支。留空则使用仓库默认分支 |
+| Additional Repositories | 每个 orb 会额外克隆到 `../repos/` 下的仓库，最多 20 个 |
+| Ship Behavior | 决定 Ship 按钮让代理做什么 |
+| Default Orb | 项目新线程默认在哪里运行，以及使用的规格 |
+| Pre-clone / Pre-setup Script | 分别在克隆仓库前、`.agents/setup` 前运行，存放在仓库之外 |
+
+## 只读 Git 凭据
+
+Amp 托管的仓库可以创建只读凭据，让构建服务器、CI 或 GPU 机器无需以你的身份登录 Amp 即可克隆和拉取。在项目设置的 **Read-only Git Credentials** 中新建，选择 7/30/90/180 天或永不过期，然后复制 **Authenticated Clone URL**——凭据只显示一次。
+
+## 权限
+
+工作区成员都能在工作区项目中发起线程；修改工作区项目设置需要项目创建者或工作区管理员。私有项目只能由所有者使用和修改。

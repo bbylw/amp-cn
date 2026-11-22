@@ -1,0 +1,48 @@
+---
+title: CLI 快捷键
+description: 自定义 TUI 键位。
+sidebar:
+  order: 3
+  group:
+    label: CLI
+---
+
+最重要的快捷键是 `Ctrl`+`O`：打开命令面板。
+
+| 快捷键 | 功能 |
+| --- | --- |
+| `Ctrl`+`O` | 打开命令面板 |
+| `Ctrl`+`S` | 打开模型选择器；线程内选择从下一条消息生效 |
+| `Ctrl`+`G` | 在编辑器中打开当前提示（需设置 `$EDITOR`） |
+| `Ctrl`+`V` | 粘贴剪贴板图片（macOS 也是 Ctrl） |
+| `Ctrl`+`R` | 打开提示历史 |
+| `↑` / `↓` | 在排队消息和历史消息间移动以编辑 |
+| `Alt`+`T` | 展开思考与工具块 |
+| `Alt`+`R` | 切换当前模型的 fast 模式 |
+| `Ctrl`+`C` `Ctrl`+`N` | 归档当前线程并新建 |
+| `Ctrl`+`C` `Ctrl`+`E` | 归档当前线程并退出 |
+| `Ctrl`+`C` `Ctrl`+`C` | 退出 |
+| `Esc` `Esc` | 打断当前代理回合 |
+| `@` | 提及文件 |
+
+查看完整快捷键与命令：`amp config keymap`。
+
+## 写提示
+
+- `Enter` 提交。代理还在工作时，`Enter` 默认是引导（当前步骤后送达）；想排队，运行 `prompt: queue message`
+- 终端支持 modified Enter 时（Ghostty、WezTerm、Kitty、iTerm2、开启 `extended-keys` 的 tmux），`Shift`+`Enter` 换行；任何终端都可用 `Ctrl`+`J`，或输入 `\` 后回车
+- tmux 用户需启用 `set -s extended-keys on`
+
+## 自定义键位
+
+```json
+{
+  "amp.keymap": {
+    "mode.toggle": ["ctrl+s", "ctrl+j"],
+    "thread.copyURL": "<leader> u",
+    "thread.interrupt": ["esc esc", "ctrl+l"]
+  }
+}
+```
+
+用空格分隔表示组合键（如 `ctrl+c ctrl+e`）。配置某个命令会替换其默认键；用数组可保留旧快捷键并新增；设为 `null` 可解绑。注意：用户设置里的 keymap **会覆盖**工作区设置里的同名项。

@@ -1,0 +1,502 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Header from "../components/Header.astro";
+import { LinkButton } from "../components/ui/link-button";
+import Icon from "@cloudflare/nimbus-docs/components/Icon.astro";
+import { withBase } from "@cloudflare/nimbus-docs/runtime";
+
+const href = (path: string) => withBase(path, import.meta.env.BASE_URL);
+
+const badges = ["多模型", "Claude Opus 5.5", "GPT-6 Astra", "云端 Orbs"];
+
+const features = [
+  {
+    icon: "ph:brain",
+    title: "为每件活选对模型",
+    body: "模型选择器同时决定模型与思考强度，并标出每个模型由谁付费。不想挑，就用 Staff Pick。",
+    href: "/models",
+  },
+  {
+    icon: "ph:cloud",
+    title: "代理跑在 Orbs 里",
+    body: "每个线程一台干净机器：依赖、工具、插件都在。合上笔记本，活儿照跑。",
+    href: "/orbs",
+  },
+  {
+    icon: "ph:devices",
+    title: "在哪里都能接着干",
+    body: "网页、macOS、Windows、Linux、iOS、Android 看的是同一批线程，就绪时通知你。",
+    href: "/workspace/apps",
+  },
+  {
+    icon: "ph:target",
+    title: "默认不问，直接动手",
+    body: "Amp 会跑测试、开浏览器、改代码，先证明改动可用，再交给你看。",
+    href: "/tools",
+  },
+  {
+    icon: "ph:puzzle-piece",
+    title: "按仓库定制",
+    body: "AGENTS.md、Skills、MCP 与插件，把团队的约定写进代理的工作方式里。",
+    href: "/customization/agents-md",
+  },
+  {
+    icon: "ph:terminal-window",
+    title: "终端里的一等公民",
+    body: "TUI、执行模式、快捷键与配置文件，CLI 和网页共享同一套线程。",
+    href: "/cli",
+  },
+];
+
+const entries = [
+  {
+    icon: "ph:browser",
+    title: "网页",
+    body: "打开 ampcode.com，注册后即可发起线程，无需安装。",
+    meta: "零安装",
+  },
+  {
+    icon: "ph:terminal-window",
+    title: "终端",
+    body: "curl 一行装好 CLI，在你自己的机器、编辑器终端或 CI 里运行。",
+    meta: "amp",
+  },
+  {
+    icon: "ph:device-mobile",
+    title: "应用",
+    body: "原生应用负责听写、跨应用分享和通知，线程状态与网页同步。",
+    meta: "6 个平台",
+  },
+];
+
+const specs = [
+  ["a1.tiny", "1C / 2GB", "$0.08/h"],
+  ["a1.small", "2C / 4GB", "$0.17/h"],
+  ["a1.medium", "4C / 8GB", "$0.33/h"],
+  ["a1.large", "8C / 16GB", "$0.66/h"],
+];
+
+const docs = [
+  { title: "快速开始", desc: "三步发出第一条提示", href: "/get-started", icon: "ph:rocket-launch" },
+  { title: "模型选择器", desc: "模型、Effort 与 Speed", href: "/models", icon: "ph:sliders-horizontal" },
+  { title: "提示技巧", desc: "把目标与约束写清楚", href: "/prompting", icon: "ph:chat-circle-dots" },
+  { title: "工具与 Painter", desc: "代理能用的手和眼", href: "/tools", icon: "ph:wrench" },
+  { title: "Orbs", desc: "云端沙箱与规格计费", href: "/orbs", icon: "ph:cloud" },
+  { title: "工作区", desc: "项目、线程与应用", href: "/workspace", icon: "ph:folders" },
+  { title: "定制", desc: "AGENTS.md、Skills、MCP、插件", href: "/customization/agents-md", icon: "ph:puzzle-piece" },
+  { title: "定价", desc: "档位、积分与用量", href: "/pricing", icon: "ph:currency-dollar" },
+];
+---
+
+<BaseLayout
+  title="Amp 中文手册"
+  description="Amp 官方文档的中文翻译：模型选择器、Orbs、CLI、技能与插件，一页一篇。"
+>
+  <div class="relative isolate flex min-h-screen flex-col overflow-x-clip">
+    <div class="hero-glow" aria-hidden="true"></div>
+    <div class="grid-lines" aria-hidden="true"></div>
+
+    <Header showSidebar={false} />
+
+    <main id="main-content" class="relative flex-1">
+      <!-- Hero -->
+      <section class="mx-auto w-full max-w-6xl px-5 pt-16 pb-10 sm:pt-24 lg:px-8">
+        <div class="mx-auto max-w-3xl text-center">
+          <p class="inline-flex items-center gap-2 rounded-full border border-border bg-card/70 px-3 py-1 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur">
+            <span class="relative flex size-1.5">
+              <span class="absolute inline-flex size-full animate-ping rounded-full bg-brand opacity-60"></span>
+              <span class="relative inline-flex size-1.5 rounded-full bg-brand"></span>
+            </span>
+            跟随 ampcode.com/docs · 更新于 2026-11-22
+          </p>
+
+          <h1 class="hero-title mt-6 text-balance text-[2.75rem] font-semibold leading-[1.08] tracking-[-0.03em] sm:text-6xl">
+            Amp 中文手册
+          </h1>
+          <p class="mx-auto mt-5 max-w-2xl text-pretty text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8">
+            Amp 是为前沿模型打造的编程代理与开发环境。这份手册把官方文档逐节译成中文——从模型选择、提示技巧，到 Orbs、CLI 与插件。
+          </p>
+
+          <div class="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <LinkButton href={href("/get-started")} variant="primary" size="lg" icon>
+              开始阅读
+            </LinkButton>
+            <LinkButton href={href("/introduction")} variant="secondary" size="lg">
+              了解 Amp
+            </LinkButton>
+            <LinkButton
+              href="https://github.com/bbylw/amp-cn"
+              variant="ghost"
+              size="lg"
+              target="_blank"
+              rel="noopener"
+            >
+              <Icon name="ph:github-logo" class="size-4" />
+              GitHub
+            </LinkButton>
+          </div>
+
+          <ul class="mt-8 flex flex-wrap items-center justify-center gap-x-2 gap-y-2 text-xs text-muted-foreground">
+            {badges.map((badge) => (
+              <li class="rounded-md border border-border bg-card/60 px-2.5 py-1 font-mono uppercase tracking-wider">
+                {badge}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <!-- Terminal card -->
+        <div class="terminal mx-auto mt-14 max-w-3xl">
+          <div class="terminal-bar">
+            <span class="terminal-dot"></span>
+            <span class="terminal-dot"></span>
+            <span class="terminal-dot"></span>
+            <span class="ms-2 font-mono text-[0.6875rem] tracking-wide text-muted-foreground">zsh — amp</span>
+          </div>
+          <div class="space-y-3 px-5 py-5 font-mono text-[0.8125rem] leading-6">
+            <p class="text-muted-foreground">
+              <span class="text-brand">$</span> curl -fsSL https://ampcode.com/install.sh | bash
+            </p>
+            <p class="text-foreground">
+              <span class="text-brand">$</span> amp -ox "Investigate why the latest CI run on main failed"
+            </p>
+            <p class="text-muted-foreground">
+              <span class="text-success">✓</span> orb a1.medium started · 依赖已装好 · 正在复现失败用例…
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Features -->
+      <section class="mx-auto w-full max-w-6xl px-5 py-16 lg:px-8">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-brand">为什么是 Amp</p>
+            <h2 class="mt-2 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+              一个代理，贯穿你的全部工作
+            </h2>
+          </div>
+          <p class="max-w-sm text-sm leading-6 text-muted-foreground">
+            同样的线程可以出现在网页、终端和手机上，因为真正干活的是云端那台机器。
+          </p>
+        </div>
+
+        <div class="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {features.map((feature) => (
+            <a href={href(feature.href)} class="feature-card group">
+              <span class="feature-icon"><Icon name={feature.icon} class="size-5" /></span>
+              <h3 class="mt-4 text-[0.9375rem] font-semibold text-foreground">{feature.title}</h3>
+              <p class="mt-1.5 text-sm leading-6 text-muted-foreground">{feature.body}</p>
+              <span class="mt-4 inline-flex items-center gap-1 text-xs font-medium text-brand opacity-0 transition-opacity group-hover:opacity-100">
+                阅读 <Icon name="ph:arrow-right" class="size-3.5" />
+              </span>
+            </a>
+          ))}
+        </div>
+      </section>
+
+      <!-- Entries -->
+      <section class="mx-auto w-full max-w-6xl px-5 pb-16 lg:px-8">
+        <div class="entry-grid">
+          {entries.map((entry) => (
+            <div class="flex items-start gap-4 p-6">
+              <span class="feature-icon shrink-0"><Icon name={entry.icon} class="size-5" /></span>
+              <div>
+                <div class="flex items-baseline gap-2">
+                  <h3 class="text-sm font-semibold text-foreground">{entry.title}</h3>
+                  <span class="font-mono text-[0.6875rem] uppercase tracking-wider text-muted-foreground">{entry.meta}</span>
+                </div>
+                <p class="mt-1.5 text-sm leading-6 text-muted-foreground">{entry.body}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <!-- Orbs -->
+      <section class="mx-auto w-full max-w-6xl px-5 pb-16 lg:px-8">
+        <div class="orbs-panel grid gap-10 p-8 sm:p-10 lg:grid-cols-[1.1fr_1fr] lg:items-center">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-brand">Orbs</p>
+            <h2 class="mt-2 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+              合上笔记本，代理继续干活
+            </h2>
+            <p class="mt-4 text-sm leading-6 text-muted-foreground">
+              每个 orb 线程都拿到一台全新的隔离机器：你的代码、插件、开发工具，以及创建它的线程的上下文。空闲时自动暂停，暂停不计费。
+            </p>
+            <ul class="mt-6 space-y-3 text-sm leading-6">
+              <li class="flex gap-2.5">
+                <Icon name="ph:check-circle" class="mt-0.5 size-4 shrink-0 text-brand" />
+                <span class="text-muted-foreground"><strong class="text-foreground">不占本机资源</strong> — 同时开几个互不相干的任务。</span>
+              </li>
+              <li class="flex gap-2.5">
+                <Icon name="ph:check-circle" class="mt-0.5 size-4 shrink-0 text-brand" />
+                <span class="text-muted-foreground"><strong class="text-foreground">能证明结果</strong> — 装依赖、跑应用、开浏览器做端到端验证。</span>
+              </li>
+              <li class="flex gap-2.5">
+                <Icon name="ph:check-circle" class="mt-0.5 size-4 shrink-0 text-brand" />
+                <span class="text-muted-foreground"><strong class="text-foreground">改动随时取回</strong> — <code class="code-chip">amp sync &lt;thread&gt;</code> 镜像回本机。</span>
+              </li>
+            </ul>
+            <div class="mt-7">
+              <LinkButton href={href("/orbs")} variant="secondary" size="base" icon>
+                查看 Orbs 文档
+              </LinkButton>
+            </div>
+          </div>
+
+          <div class="spec-card">
+            <div class="flex items-center justify-between border-b border-border px-4 py-3">
+              <span class="font-mono text-[0.6875rem] uppercase tracking-wider text-muted-foreground">规格</span>
+              <span class="font-mono text-[0.6875rem] uppercase tracking-wider text-muted-foreground">价格</span>
+            </div>
+            <ul>
+              {specs.map(([name, size, price]) => (
+                <li class="flex items-center justify-between gap-4 border-b border-border/60 px-4 py-3 last:border-0">
+                  <span class="font-mono text-[0.8125rem] text-foreground">{name}</span>
+                  <span class="flex items-center gap-4">
+                    <span class="text-xs text-muted-foreground">{size}</span>
+                    <span class="w-16 text-right font-mono text-[0.8125rem] text-foreground">{price}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p class="px-4 py-3 text-xs leading-5 text-muted-foreground">
+              所有规格含 60 GB 磁盘 · 暂停不计费 · <a href={href("/orbs/sizes")} class="text-brand no-underline hover:underline">完整价目</a>
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Docs -->
+      <section class="mx-auto w-full max-w-6xl px-5 pb-20 lg:px-8">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-brand">文档</p>
+            <h2 class="mt-2 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">从一个主题开始</h2>
+          </div>
+          <a href={href("/introduction")} class="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground no-underline transition-colors hover:text-foreground">
+            全部 25 篇 <Icon name="ph:arrow-right" class="size-3.5" />
+          </a>
+        </div>
+
+        <div class="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {docs.map((doc) => (
+            <a href={href(doc.href)} class="doc-card group">
+              <Icon name={doc.icon} class="size-4 text-brand" />
+              <h3 class="mt-3 text-sm font-semibold text-foreground">{doc.title}</h3>
+              <p class="mt-1 text-xs leading-5 text-muted-foreground">{doc.desc}</p>
+            </a>
+          ))}
+        </div>
+      </section>
+
+      <!-- CTA -->
+      <section class="mx-auto w-full max-w-6xl px-5 pb-24 lg:px-8">
+        <div class="cta-panel flex flex-col items-center gap-5 px-6 py-12 text-center sm:px-12">
+          <h2 class="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">准备好发出第一条提示了？</h2>
+          <p class="max-w-xl text-sm leading-6 text-muted-foreground">
+            先从三步快速开始，或者在终端里装好 CLI。看不懂的地方，直接问 Amp 自己。
+          </p>
+          <div class="flex flex-wrap items-center justify-center gap-3">
+            <LinkButton href={href("/get-started")} variant="primary" size="lg" icon>快速开始</LinkButton>
+            <LinkButton href={href("/cli")} variant="secondary" size="lg">安装 CLI</LinkButton>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="border-t border-border bg-card/40">
+      <div class="mx-auto flex w-full max-w-6xl flex-col gap-4 px-5 py-8 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between lg:px-8">
+        <p class="flex items-center gap-2">
+          <Icon name="ph:lightning" class="size-3.5 text-brand" />
+          基于 <a href="https://ampcode.com/docs" class="text-foreground no-underline hover:underline" target="_blank" rel="noopener">Amp 官方文档</a> 翻译 · 更新于 2026-11-22
+        </p>
+        <p class="flex flex-wrap items-center gap-4">
+          <a href="https://ampcode.com" class="no-underline hover:text-foreground" target="_blank" rel="noopener">ampcode.com</a>
+          <a href="https://github.com/bbylw/amp-cn" class="no-underline hover:text-foreground" target="_blank" rel="noopener">GitHub</a>
+          <span>© Sourcegraph</span>
+        </p>
+      </div>
+    </footer>
+  </div>
+</BaseLayout>
+
+<style>
+  .hero-glow {
+    position: absolute;
+    inset-inline: 0;
+    top: -12rem;
+    height: 34rem;
+    z-index: -2;
+    background: radial-gradient(
+      58% 62% at 50% 45%,
+      color-mix(in oklch, var(--nb-brand) 26%, transparent),
+      transparent 72%
+    );
+    filter: blur(6px);
+    pointer-events: none;
+  }
+
+  .grid-lines {
+    position: absolute;
+    inset-inline: 0;
+    top: 0;
+    height: 40rem;
+    z-index: -2;
+    background-image:
+      linear-gradient(to right, var(--nb-border) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--nb-border) 1px, transparent 1px);
+    background-size: 64px 64px;
+    mask-image: radial-gradient(ellipse 62% 55% at 50% 0%, black, transparent 78%);
+    opacity: 0.55;
+    pointer-events: none;
+  }
+
+  .hero-title {
+    background: linear-gradient(
+      180deg,
+      var(--nb-foreground) 30%,
+      color-mix(in oklch, var(--nb-foreground) 58%, transparent)
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .terminal {
+    overflow: hidden;
+    border-radius: calc(var(--nb-radius) + 0.25rem);
+    border: 1px solid var(--nb-border);
+    background: color-mix(in oklch, var(--nb-card) 92%, transparent);
+    box-shadow: var(--nb-shadow-lg);
+    backdrop-filter: blur(12px);
+  }
+
+  .terminal-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    border-bottom: 1px solid var(--nb-border);
+    background: color-mix(in oklch, var(--nb-muted) 60%, transparent);
+    padding: 0.5rem 0.875rem;
+  }
+
+  .terminal-dot {
+    width: 0.625rem;
+    height: 0.625rem;
+    border-radius: 999px;
+    background: var(--nb-border-strong);
+  }
+
+  .terminal-dot:first-child {
+    background: color-mix(in oklch, var(--nb-danger) 65%, transparent);
+  }
+  .terminal-dot:nth-child(2) {
+    background: color-mix(in oklch, var(--nb-warning) 65%, transparent);
+  }
+  .terminal-dot:nth-child(3) {
+    background: color-mix(in oklch, var(--nb-success) 60%, transparent);
+  }
+
+  .feature-card {
+    display: block;
+    border: 1px solid var(--nb-border);
+    border-radius: calc(var(--nb-radius) + 0.125rem);
+    background: color-mix(in oklch, var(--nb-card) 75%, transparent);
+    padding: 1.25rem;
+    text-decoration: none;
+    transition:
+      transform 0.18s ease,
+      border-color 0.18s ease,
+      box-shadow 0.18s ease;
+  }
+
+  .feature-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--nb-border-strong);
+    box-shadow: var(--nb-shadow-lg);
+  }
+
+  .feature-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: var(--nb-radius);
+    border: 1px solid color-mix(in oklch, var(--nb-brand) 28%, var(--nb-border));
+    background: color-mix(in oklch, var(--nb-brand) 10%, transparent);
+    color: var(--nb-brand);
+  }
+
+  .entry-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    overflow: hidden;
+    border: 1px solid var(--nb-border);
+    border-radius: calc(var(--nb-radius) + 0.25rem);
+    background: color-mix(in oklch, var(--nb-card) 65%, transparent);
+  }
+
+  .entry-grid > * + * {
+    border-top: 1px solid var(--nb-border);
+  }
+
+  @media (min-width: 48rem) {
+    .entry-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .entry-grid > * + * {
+      border-top: 0;
+      border-inline-start: 1px solid var(--nb-border);
+    }
+  }
+
+  .orbs-panel,
+  .cta-panel {
+    border: 1px solid var(--nb-border);
+    border-radius: 1rem;
+    background:
+      radial-gradient(
+        70% 120% at 100% 0%,
+        color-mix(in oklch, var(--nb-brand) 10%, transparent),
+        transparent 60%
+      ),
+      color-mix(in oklch, var(--nb-card) 80%, transparent);
+  }
+
+  .spec-card {
+    overflow: hidden;
+    border: 1px solid var(--nb-border);
+    border-radius: var(--nb-radius);
+    background: color-mix(in oklch, var(--nb-background) 70%, transparent);
+  }
+
+  .code-chip {
+    border: 1px solid var(--nb-border);
+    border-radius: var(--nb-radius-sm);
+    background: color-mix(in oklch, var(--nb-foreground) 5%, transparent);
+    padding: 0.0625rem 0.3125rem;
+    font-family: var(--nb-font-mono);
+    font-size: 0.8125em;
+    color: var(--nb-foreground);
+  }
+
+  .doc-card {
+    display: block;
+    border: 1px solid var(--nb-border);
+    border-radius: var(--nb-radius);
+    background: color-mix(in oklch, var(--nb-card) 60%, transparent);
+    padding: 1rem;
+    text-decoration: none;
+    transition:
+      background 0.16s ease,
+      border-color 0.16s ease;
+  }
+
+  .doc-card:hover {
+    border-color: var(--nb-border-strong);
+    background: var(--nb-card);
+  }
+</style>

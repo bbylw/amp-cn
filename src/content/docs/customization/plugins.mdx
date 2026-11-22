@@ -1,0 +1,68 @@
+---
+title: 插件
+description: 用插件改变代理的行为。
+sidebar:
+  order: 4
+  group:
+    label: 定制
+---
+
+插件是给 Amp 添加工具、命令和事件驱动行为的 TypeScript / JavaScript 模块，可以是单个文件，也可以是带辅助文件的目录。**插件会在你的环境中运行代码，只加载你信任的插件。**
+
+## 插件能做什么
+
+- **处理事件** — `amp.on(...)` 监听工具调用、工具结果和代理生命周期事件
+- **添加工具** — `amp.registerTool(...)`
+- **调用工具** — `ctx.tools.call(name, input)`
+- **打包技能** — `await amp.registerSkill(...)`
+- **添加命令** — `amp.registerCommand(...)`
+- **显示 UI** — `ctx.ui.notify` / `confirm` / `input` / `select`
+- **用 AI 分类** — `amp.ai.ask(...)` 做线程内的是/否判断，`amp.ai.decide(...)` 做快速、带校准概率的类型化决策
+- **给线程打标签** — `ctx.thread.addLabels(...)`、`ctx.thread.setLabels(...)`
+
+## 插件位置与优先级
+
+- **个人插件** — 在 Personal Settings 管理，使用 Amp 的所有地方都生效
+- **工作区插件** — 工作区管理员在 Workspace Settings 管理，对全体成员生效
+- **项目插件** — 放在项目根目录的 `.amp/plugins/`，在该项目中运行 Amp 时生效
+- **系统插件** — `$XDG_CONFIG_HOME/amp/plugins/`，未设置时为 `~/.config/amp/plugins/`（Windows 为 `%USERPROFILE%\.config\amp\plugins\`）
+
+## 安装单个文件插件
+
+```bash
+amp plugins add <url>
+```
+
+加 `--target workspace` 则装进当前项目的 `.amp/plugins/`。
+
+## 编写插件
+
+单文件插件是插件目录下直接的 `.ts` / `.js`；目录插件用 `<plugin-name>/index.ts` 或 `index.js`（两者都在时用 `index.ts`）。入口文件默认导出一个函数，Amp 传入 `PluginAPI` 对象。
+
+```bash
+import type { PluginAPI } from '@ampcode/plugin'
+
+export default function (amp: PluginAPI) {
+  amp.registerTool({
+    name: 'project_status',
+    description: 'Show the current git status for this repository.',
+    inputSchema: { type: 'object', properties: {}, required: [] },
+    async execute() {
+      const result = await amp.$`git status --short`
+      return result.stdout || 'No changes.'
+    },
+  })
+}
+```
+
+## 重载
+
+修改插件后让 Amp 重载，或在命令面板（`Ctrl`+`O`）运行 `plugins: reload` / `plugins: list`。在 shell 中运行 `amp plugins list` 可查看已加载插件及其来源、事件、命令和工具。
+
+## 自定义代理模式
+
+用 `amp.createAgent(...)` 和 `amp.registerAgentMode(...)` 添加自定义代理模式，它会出现在模型选择器的 **Your Agents** 分组中。模式的 `model` 必填；每个 Task 子代理都会使用同一个模型与思考强度。
+
+:::caution
+旧写法用 `extends` 继承内置模式，现在 `extends` 与 `model` 同时出现会被忽略；只写 `extends` 而没有 `model` 会报错。自定义模式的 key 与 label 必须唯一、非空、不超过 24 个字符，且不能与内置模式冲突。
+:::

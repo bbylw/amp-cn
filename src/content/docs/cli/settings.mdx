@@ -1,0 +1,60 @@
+---
+title: 配置
+description: 配置文件、常用设置与托管设置。
+sidebar:
+  order: 4
+  group:
+    label: CLI
+---
+
+## 配置文件位置
+
+| 类型 | 路径 |
+| --- | --- |
+| 用户设置 | `~/.config/amp/settings.json`（或 `.jsonc`）；Windows 为 `%USERPROFILE%\.config\amp\settings.json` |
+| 工作区设置 | 从当前目录向上到仓库根，最近的 `.amp/settings.json`（或 `.jsonc`） |
+| 自定义用户设置 | `--settings-file <path>` |
+
+`amp config edit` 用 `$EDITOR` 打开用户设置，加 `--workspace` 编辑工作区设置。同一设置出现在多处时，工作区覆盖用户。所有设置都以 `amp.` 为前缀。
+
+## 启用 Schema 校验
+
+```json
+{
+  "$schema": "https://ampcode.com/cli-settings.schema.json",
+  "amp.showCosts": true
+}
+```
+
+## 常用设置
+
+| 设置项 | 说明 | 默认值 |
+| --- | --- | --- |
+| `amp.showCosts` | 在 CLI 中显示线程成本 | `true` |
+| `amp.notifications.enabled` | 代理完成任务或等待输入时播放提示音 | `true` |
+| `amp.tools.disable` | 按名称禁用工具，支持 `*` 通配；`builtin:` 前缀只禁用内置工具 | `[]` |
+| `amp.mcpPermissions` | 按规则允许 / 拒绝 MCP 服务器，首条匹配生效 | `[]` |
+| `amp.updates.mode` | `auto` 自动安装 / `warn` 仅提示 / `disabled` 关闭检查 | `"auto"` |
+| `amp.git.commit.ampThread.enabled` | 在提交信息里加 `Amp-Thread-ID` trailer | `true` |
+| `amp.git.commit.coauthor.enabled` | 把 Amp 加为提交共同作者 | `true` |
+| `amp.terminal.copyOnSelect` | 选中文本时自动复制 | `true` |
+| `amp.thread.autoArchiveOnQuit` | 退出时自动归档打开的线程 | `false` |
+| `amp.skills.path` | 附加技能目录，冒号（Windows 用分号）分隔 | — |
+
+## 托管设置
+
+工作区管理员可以在 Workspace Settings 的 Managed Settings 页写一份 JSON 文档（键与 `managed-settings.json` 相同），也可以把本地 `managed-settings.json` 分发到每台机器：
+
+- macOS：`/Library/Application Support/ampcode/managed-settings.json`
+- Linux：`/etc/ampcode/managed-settings.json`
+- Windows：`%ProgramData%\ampcode\managed-settings.json`
+
+运行 `settings: show managed` 可查看工作区托管了哪些键。
+
+## 代理与证书
+
+```bash
+export HTTP_PROXY=your-proxy-url
+export HTTPS_PROXY=your-proxy-url
+export NODE_EXTRA_CA_CERTS=/path/to/your/certificates.pem
+```

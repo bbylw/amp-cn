@@ -1,0 +1,71 @@
+---
+title: MCP 服务器
+description: 接入 MCP 服务器扩展代理能力。
+sidebar:
+  order: 3
+  group:
+    label: 定制
+---
+
+通过 [MCP（Model Context Protocol）](https://modelcontextprotocol.io) 服务器添加工具，本地或远程均可。Amp 有两种配置方式：
+
+- **本地配置** — 存在 `amp.mcpServers` 中。URL 条目也属于本地配置，即使 URL 指向另一台机器
+- **远程定义** — 由 ampcode.com 存储，在 MCP 服务器设置或 `amp mcp remote` 中管理。由 Amp 的服务器发起连接
+
+:::tip
+大多数场景下，推荐通过技能里的 `mcp.json` 打包 MCP 服务器，而不是加进用户设置：工具列表保持干净，只在需要时加载 MCP 工具。
+:::
+
+## 添加服务器
+
+```bash
+amp mcp add context7 -- npx -y @upstash/context7-mcp
+amp mcp add linear https://mcp.linear.app/sse
+```
+
+在配置文件中使用 `amp.mcpServers`，环境变量用 `${VAR_NAME}`：
+
+```bash
+"amp.mcpServers": {
+  "playwright": {
+    "command": "npx",
+    "args": ["-y", "@playwright/mcp@latest", "--headless"]
+  },
+  "linear": { "url": "https://mcp.linear.app/sse" },
+  "sourcegraph": {
+    "url": "${SRC_ENDPOINT}/.api/mcp/v1",
+    "headers": { "Authorization": "token ${SRC_ACCESS_TOKEN}" }
+  }
+}
+```
+
+本地服务器用 `command` / `args` / `env`，远程服务器用 `url` / `headers`。
+
+## 加载优先级（本地配置）
+
+同名服务器出现在多处时，从高到低：
+
+1. CLI 参数（`--mcp-config`）
+2. 工作区配置（`.amp/settings.json` 中的 `amp.mcpServers`）
+3. 用户配置（`~/.config/amp/settings.json`）
+4. Skills
+
+## 工作区服务器的信任
+
+工作区设置中的 MCP 服务器在运行前需要明确批准，防止打开项目时自动执行不受信任的代码。等待批准时 `amp mcp doctor` 会显示 `awaiting approval`，用 `amp mcp approve my-server` 批准。
+
+## Orb 中的 MCP
+
+本地（stdio）与远程 MCP 服务器都能在 orb 中工作。orb 在另一台机器上运行自己的 Amp 执行器，不读取你电脑上的设置文件，所以要配置在 orb 能看到的地方：
+
+- 通过技能打包 `mcp.json` 并提交到仓库（推荐）
+- 提交到仓库的工作区配置（`.amp/settings.json`），但需要批准
+- 在 MCP 服务器设置中添加远程定义，无需改动仓库
+
+orb 中无法使用基于浏览器的 OAuth 流程。需要认证的远程服务器，请通过 `headers` 传 token（可用 secrets 设置里的环境变量）、发送 Amp ID token，或使用远程 MCP 定义（OAuth 通过 ampcode.com 完成）。
+
+## 最佳实践
+
+- 把 MCP 服务器打包进技能，而不是全局添加
+- 选择暴露少量高质量工具、描述清晰的服务器
+- 禁用不用的 MCP 工具，或优先考虑直接使用 CLI 工具

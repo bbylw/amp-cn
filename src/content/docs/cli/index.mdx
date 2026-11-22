@@ -1,0 +1,57 @@
+---
+title: CLI 入门
+description: 安装、登录与日常使用。
+sidebar:
+  order: 1
+  group:
+    label: CLI
+---
+
+Amp CLI 在你的终端中运行，可以让 Amp 代理跑在本机、[orb](/orbs) 或已连接的 runner 上。支持 macOS、Linux 和 WSL（Windows）。Windows 上推荐使用 WezTerm 或 Alacritty 以获得完整的剪贴板支持。
+
+## 安装与启动
+
+```bash
+curl -fsSL https://ampcode.com/install.sh | bash
+
+amp                      # 交互模式
+echo "提交我所有的改动" | amp   # 管道输入
+amp --help
+```
+
+## 管理 CLI 账号
+
+- `amp login` — 添加账号并设为当前服务器上的活跃账号
+- `amp account list` — 查看已保存账号
+- `amp account switch <email-or-user-id>` — 切换后续命令使用的账号；已在运行的进程不受影响
+- `amp logout` / `amp logout --all` — 移除当前 / 全部已保存账号
+
+## Shell 补全
+
+```bash
+source <(amp completions bash)   # Bash 4+，需先加载 bash-completion
+source <(amp completions zsh)    # Zsh，放在 compinit 之后
+amp completions fish | source    # Fish
+amp completions pwsh | Out-String | Invoke-Expression   # PowerShell 7
+```
+
+## 选择线程在哪里运行
+
+```bash
+amp --executor local
+amp --executor orb
+amp --executor runner:grandmas-garage-server
+```
+
+orb 线程使用与当前目录 Git remote 匹配的 Amp 项目；没有匹配时 Amp 会警告并使用无项目的 orb。
+
+## 更新与版本
+
+```bash
+amp update
+amp version
+```
+
+## 连接编辑器
+
+Amp 可连接 VS Code、Cursor、Windsurf、Zed 和 Neovim。打开编辑器，运行 `amp`，然后按 `Ctrl`+`O` 打开命令面板选择 `ide connect`。集成让 Amp 看到当前打开的文件与选区，并通过 IDE 编辑文件（支持完整撤销）。Neovim 还需要安装 [amp.nvim](https://github.com/ampcode/amp.nvim) 插件。

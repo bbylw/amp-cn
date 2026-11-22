@@ -1,0 +1,60 @@
+---
+title: 模型选择器
+description: 用模型选择器决定线程的模型与思考强度。
+sidebar:
+  order: 1
+  group:
+    label: 模型
+---
+
+用模型选择器决定线程跑在哪个模型上、用多大的思考强度。选择器还会显示每个模型由谁付费。
+
+:::caution
+**模式（Dial）已被模型选择器取代。**旧的 `low` / `medium` / `high` / `ultra` 四种模式不再用于新线程。新线程默认从 **Staff Pick** 开始；已有线程保持原来的模型继续工作。
+:::
+
+## Staff Pick（官方推荐）
+
+Staff Pick 是 Amp 团队为大多数工作会选择的模型，目前是 **Claude Opus 5.5**。团队会持续测试，当别的模型表现更好时就换掉它。如果你不想挑模型，保持 Staff Pick 即可。
+
+你选模型，Amp 围绕它构建代理：每个模型都有自己的系统提示与工具集，换模型时两者都会变。
+
+## 选择器中能调什么
+
+- **Effort（思考强度）** — 模型回答前推理多少。越高越慢、消耗 token 越多；越低越快越省。选择器只显示该模型支持的档位，并标出推荐档
+- **Speed（速度）** — 在 Standard、Fast 之间切换，部分模型还支持 Plaid。新线程默认 Standard
+- **Other Models** — 列出你可用的其它模型与代理
+
+## 打开方式
+
+- 网页/应用：点击提示框下方的模型按钮
+- 网页或 CLI：按 `Ctrl`+`S`
+- CLI 中切换线程模型：`Ctrl`+`S` 选模型，用 `←` `→` 调 effort。只有线程所有者能切换
+
+切换是有成本的：提示缓存属于某个模型，新模型要无缓存地重读整个线程，切换后的第一条消息会比平时更贵。
+
+## 新线程从哪儿开始
+
+| 设置 | 行为 |
+| --- | --- |
+| Staff Pick（默认） | 每个新线程都用 Staff Pick；若你的 Top Models 里没有它，则用第一个 Top Model |
+| Last Choice | 用你上次选的模型 |
+| 固定模型 | 所有新线程都用你指定的那个模型 |
+
+在 **Settings → Model Selector** 中可以调整 Top Models（最多 8 个）、它们的建议 effort 与顺序。
+
+## 用命令行指定模型
+
+```bash
+amp -x "Review this repository" --model openai/gpt-6-astra --effort xhigh
+```
+
+`--model` 用 `provider/name` 形式的模型 ID 为新线程选模型，`--effort` 设置思考强度。交互模式、`-x` 执行模式和 `-ox` orb 执行模式都支持。
+
+## 用你自己的订阅
+
+- **ChatGPT 订阅** — 关联后 OpenAI 模型计入 ChatGPT 订阅而非 Amp 积分。CLI 运行 `amp config model-providers add-chatgpt-subscription`（别名 `amp add-chatgpt-sub`）
+- **Claude 订阅** — 在 **Settings → Model Routing** 中关联为 Claude Subscription，Claude 模型就走你的 Claude 套餐。Claude 模型通过 Claude Code 提供，首字延迟会更长
+- **BYOK** — 在 Model Routing 里加自己的 API Key
+
+Orb 费用不由 ChatGPT / Claude 套餐覆盖，仍需用 Amp 积分或套餐额度支付；Painter 图像生成、网页搜索、读网页、语音也都消耗 Amp 积分。

@@ -1,0 +1,32 @@
+---
+title: 集成
+description: GitHub、GitLab、Google、Linear 与 Slack。
+sidebar:
+  order: 5
+---
+
+集成把 Amp 接到团队跟踪和审查工作的服务上。每个人在 **Settings → Integrations & MCP** 中连接自己的账号，Amp 就以该人的权限行动。工作区管理员在 **Workspace Settings → Integrations & MCP** 中安装共享应用、开关集成。
+
+## GitHub
+
+让 orb 克隆私有仓库、推送分支、以你的身份开 PR。GitHub webhook 还能在 issue、PR 或 CI 运行变化时继续线程，或为每个新 issue / PR 启动一个新 orb。
+
+## GitLab
+
+让 orb 在 gitlab.com 或自建实例上以你的身份克隆和推送、运行 `glab`，并在线程中跟进合并请求、issue 和 CI。
+
+## Google
+
+让 Amp 读取并操作 Gmail、Google 日历、Docs、Sheets 和 Drive，每项服务可单独选择访问级别。
+
+## Linear
+
+双向工作：在 Linear 里把 issue 指派给 Amp 或 `@Amp`，Amp 会在 orb 中处理并回复；在 Amp 里，orb 通过你的 Linear 连接读写 issue，也可以用订阅为每个新 issue 启动 orb。
+
+## Slack
+
+在 Slack 里 `@Amp` 提问、开始工作或查看线程状态。默认情况下，除你自己的私信和由 `@Amp` 开启的线程外，Amp 在 Slack 中发帖、编辑、删除或加表情前都会先问你。
+
+## 其它服务
+
+任何有 MCP 服务器的服务（如 Sentry、Notion）都可以接入，见 [MCP](/customization/mcp)。
