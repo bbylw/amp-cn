@@ -7,9 +7,9 @@ sidebar:
     label: 工作区
 ---
 
-线程是一次与代理的对话：你的提示、代理的回复、它调用的每个工具、它修改的文件。线程是 Amp 的工作单元：一个任务一个线程，可以在任何设备上继续，也可以交给同事。
+线程是一次与 agent 的对话：你的提示、agent 的回复、它调用的每个工具、它修改的文件。线程是 Amp 的工作单元：一个任务一个线程，可以在任何设备上继续，也可以交给同事。
 
-每个线程都有一个 URL，例如 `https://ampcode.com/threads/T-…`。同一个线程可以在网页、CLI 以及 macOS / Windows / Linux / iOS / Android 应用中打开。**代理在哪里运行，与你从哪里查看是两件事**：线程可以跑在 orb、runner 或本地 CLI 会话中。
+每个线程都有一个 URL，例如 `https://ampcode.com/threads/T-…`。同一个线程可以在网页、CLI 以及 macOS / Windows / Linux / iOS / Android 应用中打开。**agent 在哪里运行，与你从哪里查看是两件事**：线程可以跑在 orb、runner 或本地 CLI 会话中。
 
 ## 线程在哪里
 
@@ -34,7 +34,7 @@ Changes 面板会智能排序：Amp 读取 diff，把最能说明改动的文件
 - `amp threads continue T-…` 让 CLI 附着到线程
 - 从 More Actions 菜单的 **Orb → Copy Sync CLI Command** 复制带线程 ID 的 `amp sync` 命令
 
-代理提交的 commit 会带 `Amp-Thread-ID` trailer，所以 `git log` 能从改动追溯到产生它的对话。
+agent 提交的 commit 会带 `Amp-Thread-ID` trailer，所以 `git log` 能从改动追溯到产生它的对话。
 
 ## 分享线程
 
@@ -46,7 +46,7 @@ Changes 面板会智能排序：Amp 读取 diff，把最能说明改动的文件
 | Your workspace | 工作区全体成员 |
 | Anyone with the Link | 拿到链接的任何互联网用户 |
 
-打开 **Multiplayer** 后，有访问权的人都能参与：贡献者可以提示代理，查看者只能阅读。启用链接分享时无法使用 Multiplayer。在 CLI 中运行 `set visibility`、`share with people`，或 `amp threads share T-… --visibility unlisted`。
+打开 **Multiplayer** 后，有访问权的人都能参与：贡献者可以提示 agent，查看者只能阅读。启用链接分享时无法使用 Multiplayer。在 CLI 中运行 `set visibility`、`share with people`，或 `amp threads share T-… --visibility unlisted`。
 
 ## 导出
 
@@ -60,8 +60,8 @@ More Actions 菜单支持 **Pin**（置顶）、**Color**（颜色）、**Labels
 
 ## 一起工作
 
-在输入框输入 `@` 可以标记工作区成员，这会邀请他们并开启 Multiplayer。只有 orb 或共享 runner 上的非私有线程才能启用 Multiplayer，代理与 orb 费用计入线程所有者。
+在输入框输入 `@` 可以标记工作区成员，这会邀请他们并开启 Multiplayer。只有 orb 或共享 runner 上的非私有线程才能启用 Multiplayer，agent 与 orb 费用计入线程所有者。
 
 ## Artifacts
 
-Artifact 是附在线程上的文档，你、同事和代理可以一起编辑，适合计划、报告、会议记录或跨线程汇集的发现。一个线程可以有多个 artifact，按文件夹分组，支持标题、列表、清单、表格、代码、图片和交互视图。每个 artifact 最大 2 MB。
+Artifact 是附在线程上的文档，你、同事和 agent 可以一起编辑，适合计划、报告、会议记录或跨线程汇集的发现。一个线程可以有多个 artifact，按文件夹分组，支持标题、列表、清单、表格、代码、图片和交互视图。每个 artifact 最大 2 MB。

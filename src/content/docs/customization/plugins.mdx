@@ -1,6 +1,6 @@
 ---
 title: 插件
-description: 用插件改变代理的行为。
+description: 用插件改变 agent 的行为。
 sidebar:
   order: 4
   group:
@@ -11,7 +11,7 @@ sidebar:
 
 ## 插件能做什么
 
-- **处理事件** — `amp.on(...)` 监听工具调用、工具结果和代理生命周期事件
+- **处理事件** — `amp.on(...)` 监听工具调用、工具结果和 agent 生命周期事件
 - **添加工具** — `amp.registerTool(...)`
 - **调用工具** — `ctx.tools.call(name, input)`
 - **打包技能** — `await amp.registerSkill(...)`
@@ -59,9 +59,9 @@ export default function (amp: PluginAPI) {
 
 修改插件后让 Amp 重载，或在命令面板（`Ctrl`+`O`）运行 `plugins: reload` / `plugins: list`。在 shell 中运行 `amp plugins list` 可查看已加载插件及其来源、事件、命令和工具。
 
-## 自定义代理模式
+## 自定义 agent 模式
 
-用 `amp.createAgent(...)` 和 `amp.registerAgentMode(...)` 添加自定义代理模式，它会出现在模型选择器的 **Your Agents** 分组中。模式的 `model` 必填；每个 Task 子代理都会使用同一个模型与思考强度。
+用 `amp.createAgent(...)` 和 `amp.registerAgentMode(...)` 添加自定义 agent 模式，它会出现在模型选择器的 **Your Agents** 分组中。模式的 `model` 必填；每个 Task 子 agent 都会使用同一个模型与思考强度。
 
 :::caution
 旧写法用 `extends` 继承内置模式，现在 `extends` 与 `model` 同时出现会被忽略；只写 `extends` 而没有 `model` 会报错。自定义模式的 key 与 label 必须唯一、非空、不超过 24 个字符，且不能与内置模式冲突。

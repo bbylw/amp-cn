@@ -1,6 +1,6 @@
 ---
 title: AGENTS.md
-description: 用 AGENTS.md 告诉代理这个仓库怎么工作。
+description: 用 AGENTS.md 告诉 agent 这个仓库怎么工作。
 sidebar:
   order: 1
   group:
@@ -18,10 +18,10 @@ Amp 从 `AGENTS.md` 文件中读取代码库结构、构建/测试命令和编�
 ## 加载规则
 
 - 当前工作目录（或编辑器工作区根）**以及父目录**（直到 `$HOME`）里的 `AGENTS.md` 始终包含
-- 子树的 `AGENTS.md` 在代理读取该子树中的文件时包含
+- 子树的 `AGENTS.md` 在 agent 读取该子树中的文件时包含
 - 系统级文件以及两个 `$HOME/.config` 下的文件若存在，始终包含
 - 如果目录里没有 `AGENTS.md`，但有 `AGENT.md`（少个 S）或 `CLAUDE.md`，则包含后者
-- 工作区管理员提供的 Global AGENTS.md 在个人与仓库指导之前包含，但不作用于子代理、Puck 和自定义代理
+- 工作区管理员提供的 Global AGENTS.md 在个人与仓库指导之前包含，但不作用于子 agent、Puck 和自定义 agent
 
 ## 文件引用
 

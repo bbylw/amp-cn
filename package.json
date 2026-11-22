@@ -30,6 +30,6 @@
     "@tailwindcss/vite": "^4.3.3",
     "pagefind": "^1.5.2",
     "tailwindcss": "^4.3.3",
-    "typescript": "^5.9.3"
+    "typescript": "6.0.3"
   }
 }

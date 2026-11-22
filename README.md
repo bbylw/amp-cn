@@ -40,7 +40,7 @@ src/pages/index.astro    # 落地页
 src/content/docs/        # 25 篇文档，目录即侧边栏
   introduction.mdx
   get-started.mdx
-  models/                # 模型选择器、子代理
+  models/                # 模型选择器、子 agent
   prompting.mdx
   tools.mdx
   orbs/                  # Orbs、仓库准备、规格与计费

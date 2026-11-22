@@ -7,14 +7,14 @@ sidebar:
     label: Orbs
 ---
 
-项目里的第一个线程从普通 orb 开始。代理可以边干边装依赖，但每个新 orb 都要重复一遍。把两个脚本加进仓库即可避免：
+项目里的第一个线程从普通 orb 开始。agent 可以边干边装依赖，但每个新 orb 都要重复一遍。把两个脚本加进仓库即可避免：
 
 - `.agents/setup` — 安装依赖和工具。Amp 在准备新 orb 时运行一次，并把结果保存为后续线程使用的快照
 - `.agents/resume` — 每次唤醒后运行。用于刷新登录、重启服务等快速操作
 
 ## 最快的添加方式
 
-项目里的第一个 orb 线程会在第一条消息上方显示 **Enable Orb Caching** 卡片，点击 **Set Up** 即可；也可以在项目页的 **Set Up Orbs** 提示中点击 **Set Up with Amp**。Amp 会发送一个请求，让代理按内置的 `orb-setup` 技能写好脚本、在 orb 中验证并提交。
+项目里的第一个 orb 线程会在第一条消息上方显示 **Enable Orb Caching** 卡片，点击 **Set Up** 即可；也可以在项目页的 **Set Up Orbs** 提示中点击 **Set Up with Amp**。Amp 会发送一个请求，让 agent 按内置的 `orb-setup` 技能写好脚本、在 orb 中验证并提交。
 
 你也可以自己说：
 
@@ -30,4 +30,4 @@ them in this orb, and commit them with the executable bit set.
 
 - **Secrets & Env Vars** — 存放 API Key 等配置，值会加密，个人值覆盖项目值
 - **Orb** — 设置默认机器规格，见下文
-- `.amp/services.yaml` — 提交到仓库，声明代理应启动并暴露的开发服务器
+- `.amp/services.yaml` — 提交到仓库，声明 agent 应启动并暴露的开发服务器
