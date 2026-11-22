@@ -1,17 +1,17 @@
 # Amp 中文手册
 
-基于 [Amp 官方手册](https://ampcode.com/manual) 的完整中文翻译版本。
+基于 [Amp 官方文档](https://ampcode.com/docs) 的中文翻译版本，跟随官方更新（最近同步：2026-11-22）。
 
 ![Amp Logo](https://static.ampcode.com/content/amp-vscode-1.png)
 
 ## 关于 Amp
 
-Amp 是由 Sourcegraph 开发的前沿编程代理（Coding Agent），专为终端和编辑器设计。它基于四大核心原则：
+Amp 是由 Sourcegraph 开发的前沿编程代理与开发环境。它基于四大理念：
 
-- **无限制 Token 使用** — 不限制模型输出，充分发挥 AI 能力
-- **始终使用最佳模型** — Claude Opus 4.5、GPT-5.1 等顶级模型各司其职
-- **原始模型能力** — 直接获得模型原始能力，无额外抽象层
-- **随模型演进** — 紧跟前沿，无历史包袱
+- **多模型** — GPT-5.6、Claude Fable 5.1、快速模型等，各司其职
+- **Orbs** — Amp 为每个线程创建的云端机器，代码、工具、插件已就绪
+- **无处不在** — 网页、桌面、手机、CLI 共用同一套线程
+- **站在前沿** — 随模型演进，没有向后兼容包袱
 
 ## 手册内容
 
@@ -19,17 +19,23 @@ Amp 是由 Sourcegraph 开发的前沿编程代理（Coding Agent），专为终
 
 | 章节 | 说明 |
 |------|------|
-| **为什么选择 Amp** | 核心原则与特性介绍 |
-| **安装指南** | CLI 安装、编辑器扩展配置 |
-| **使用指南** | smart/rush 模式、提示技巧 |
-| **AGENTS.md** | 代码库配置文件编写 |
-| **线程交接** | Handoff 功能使用 |
-| **工具系统** | 子代理、Oracle、Librarian、MCP |
-| **权限管理** | 工具权限配置 |
-| **CLI 命令行** | 命令行用法、Shell 模式 |
-| **配置选项** | 设置项详解 |
-| **定价方案** | 免费额度、付费使用、企业版 |
-| **键盘快捷键** | 各平台/编辑器快捷键 |
+| **介绍** | 核心理念与在哪儿使用 Amp |
+| **快速开始** | 网页、CLI 与应用的起步方式 |
+| **模型选择器** | Staff Pick、effort、speed，以及已取代旧 Dial 模式的现状 |
+| **模型与子代理** | Task / Read Thread 子代理、系统模型、Oracle / Librarian / Finder |
+| **提示技巧** | 提示原则、示例、线程引用与查找、消息排队 |
+| **工具与 Painter** | 内置工具、图像生成、权限模型 |
+| **Orbs** | Orb 概念、终端、文件上传、`amp sync`、启动方式 |
+| **准备仓库** | `.agents/setup` 与 `.agents/resume` 快照机制 |
+| **Orb 规格与计费** | 六种规格的价格、暂停与计费规则 |
+| **项目** | 仓库、额外仓库、Ship 行为、只读 Git 凭据 |
+| **线程** | 分享、Multiplayer、Artifacts、整理与导出 |
+| **应用** | macOS / iOS / Android / Windows / Linux |
+| **Puck** | 个人助理、语音通话、其它应用接入 |
+| **集成** | GitHub、GitLab、Google、Linear、Slack、MCP |
+| **定制** | AGENTS.md、Skills、MCP、插件 |
+| **CLI** | 安装、账号、补全、执行模式、快捷键、配置 |
+| **定价** | Hobby / Individual / Teams / Enterprise |
 
 ## 快速开始
 
@@ -40,9 +46,8 @@ Amp 是由 Sourcegraph 开发的前沿编程代理（Coding Agent），专为终
 ### 本地部署
 
 ```bash
-# 克隆仓库
-git clone https://github.com/your-username/amp-manual-zh.git
-cd amp-manual-zh
+git clone https://github.com/bbylw/amp-cn.git
+cd amp-cn
 
 # 使用任意静态服务器
 npx serve .
@@ -57,7 +62,7 @@ python -m http.server 8000
 - ✅ **深色主题** — 程序员友好的暗色界面
 - ✅ **侧边导航** — 桌面端固定目录，移动端折叠菜单
 - ✅ **代码高亮** — 命令和配置示例清晰展示
-- ✅ **快捷键表格** — 按平台和编辑器分类
+- ✅ **跟随官方更新** — 按 ampcode.com/docs 最新结构组织
 
 ## 安装 Amp
 
@@ -67,13 +72,17 @@ python -m http.server 8000
 curl -fsSL https://ampcode.com/install.sh | bash
 ```
 
-### 编辑器扩展
+支持 macOS、Linux 和 WSL（Windows）。
 
-| 编辑器 | 安装方式 |
-|--------|----------|
-| VS Code / Cursor | 安装 `sourcegraph.amp` 扩展 |
-| JetBrains | 安装 CLI 后运行 `amp --jetbrains` |
-| Neovim | 安装 [amp.nvim](https://github.com/sourcegraph/amp.nvim) |
+### 桌面与移动应用
+
+| 平台 | 要求 |
+|------|------|
+| macOS | Apple 芯片，macOS 26+ |
+| iPhone / iPad | iOS / iPadOS 26+ |
+| Android | Android 13+ |
+| Windows | Windows 10 1809+ / 11 |
+| Linux | Debian 12+、Ubuntu 22.04+、Fedora、Arch |
 
 ## 示例提示词
 
@@ -81,24 +90,23 @@ curl -fsSL https://ampcode.com/install.sh | bash
 # 修复构建错误
 amp -x "运行 pnpm run build 并修复所有错误"
 
-# 代码审查
-amp -x "使用 oracle 审查最后一次提交"
+# 代码审查（子代理）
+amp -x "让一个子代理审查最后一次提交的改动"
 
-# 并行任务
-amp -x "用 3 个子代理把这些 CSS 转换成 Tailwind"
+# 在云端 Orb 中执行
+amp -ox "排查 main 上最新一次 CI 失败的原因"
 
-# 只做规划
-amp -x "规划如何添加实时聊天功能，不要写代码"
+# 指定模型与思考强度
+amp -x "审查这个仓库" --model openai/gpt-6-astra --effort xhigh
 ```
 
 ## 相关链接
 
 - 🌐 [Amp 官网](https://ampcode.com)
-- 📖 [官方手册 (英文)](https://ampcode.com/manual)
-- 📦 [NPM 包](https://www.npmjs.com/package/@sourcegraph/amp)
-- 🐙 [GitHub - amp.nvim](https://github.com/sourcegraph/amp.nvim)
-- 💬 [Build Crew 社区](https://buildcrew.team)
-- 🐦 [Twitter @AmpCode](https://x.com/AmpCode)
+- 📖 [官方文档 (英文)](https://ampcode.com/docs)
+- ☁️ [什么是 Orbs](https://ampcode.com/what-are-orbs)
+- 🧩 [Plugin API](https://ampcode.com/docs/plugin-api)
+- 🐙 [GitHub - amp.nvim](https://github.com/ampcode/amp.nvim)
 
 ## 贡献
 
@@ -106,7 +114,7 @@ amp -x "规划如何添加实时聊天功能，不要写代码"
 
 ## 许可证
 
-本翻译项目基于原始 Amp 手册内容创建，仅供学习参考。
+本翻译项目基于原始 Amp 文档内容创建，仅供学习参考。
 
 Amp 是 [Sourcegraph](https://sourcegraph.com) 的产品。
 
