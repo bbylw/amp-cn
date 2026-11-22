@@ -8,6 +8,12 @@
  * to its lines by measuring it, and renders the PNG. To use another script,
  * such as Chinese or Japanese, add a font that covers it to `fonts`.
  *
+ * Noto Sans SC (OFL, see `_fonts/OFL.txt`) draws the Chinese, subset to the
+ * characters the cards currently use — two `pyftsubset` runs over the variable
+ * font, one instance at wght 400 and one at 500, with a text file made from the
+ * docs frontmatter. A title with a character outside the subset logs an `[og]`
+ * warning naming it at build time; add that character and regenerate.
+ *
  * The leading underscore keeps Astro from routing this file or `_fonts/`.
  */
 import { createCardRenderer, type CardNode, type CardTypography } from "@cloudflare/nimbus-docs/og";
@@ -26,8 +32,12 @@ const HEIGHT = 630;
 const LEFT = 80;
 const COLUMN = WIDTH - LEFT - 200;
 
-const TITLE: CardTypography = { fontFamily: "Inter", fontWeight: 500, letterSpacing: "-0.025em", lineHeight: 1.1, color: FOREGROUND };
-const SECTION: CardTypography = { fontFamily: "Inter", fontWeight: 400, lineHeight: 1.2, color: MUTED };
+// Inter draws the Latin; Noto Sans SC (subset to the characters these cards
+// use) draws the Chinese, which would otherwise come out as tofu.
+const FONT_STACK = "Inter, Noto Sans SC";
+
+const TITLE: CardTypography = { fontFamily: FONT_STACK, fontWeight: 500, letterSpacing: "-0.025em", lineHeight: 1.1, color: FOREGROUND };
+const SECTION: CardTypography = { fontFamily: FONT_STACK, fontWeight: 400, lineHeight: 1.2, color: MUTED };
 
 // Fonts sit beside this file, not in public/, so they never ship. Read from
 // the project so `astro build --root <site>` finds them.
@@ -38,6 +48,8 @@ const renderer = await createCardRenderer({
   fonts: [
     { name: "Inter", source: font("Inter-Regular.ttf"), weight: 400 },
     { name: "Inter", source: font("Inter-Medium.ttf"), weight: 500 },
+    { name: "Noto Sans SC", source: font("NotoSansSC-Regular.ttf"), weight: 400 },
+    { name: "Noto Sans SC", source: font("NotoSansSC-Medium.ttf"), weight: 500 },
   ],
   emoji: "strip",
 });
@@ -53,7 +65,7 @@ const Logo = (height: number): CardNode => ({
   props: {
     width: Math.round((height * logo.width) / logo.height),
     height,
-    viewBox: `0 0 ${logo.width} ${logo.height}`,
+    viewBox: logo.viewBox,
     children: logo.paths.map((d) => ({ type: "path", props: { d, fill: FOREGROUND } })),
   },
 });
