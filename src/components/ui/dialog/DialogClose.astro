@@ -1,15 +1,23 @@
 ---
 /**
- * DialogClose — button that closes the nearest ancestor <dialog>.
+ * DialogClose — button that closes a <dialog>.
+ *
+ * Pass `commandfor` with the dialog's id to close it declaratively, with no
+ * JavaScript: the browser handles the click, focus return and `aria-expanded`.
+ * Without it (or on browsers without Invoker Commands) the client fallback
+ * closes the nearest ancestor <dialog>.
  * Consumer provides the visual (icon, text, kbd hint) via default slot.
  */
 import { cn } from "@/lib/cn";
 import type { HTMLAttributes } from "astro/types";
 
-interface Props extends HTMLAttributes<"button"> {}
+interface Props extends HTMLAttributes<"button"> {
+  /** The id of the <dialog> to close. */
+  commandfor?: string;
+}
 
 // A composing component can pass its own `data-slot` in place of this one.
-const { class: className, "data-slot": slot = "dialog-close", ...attrs } = Astro.props;
+const { class: className, commandfor: commandFor, "data-slot": slot = "dialog-close", ...attrs } = Astro.props;
 ---
 
 <button
@@ -17,6 +25,7 @@ const { class: className, "data-slot": slot = "dialog-close", ...attrs } = Astro
   data-dialog-close
   type="button"
   class={cn(className)}
+  {...(commandFor ? ({ command: "close", commandfor: commandFor } as Record<string, string>) : {})}
   {...attrs}
 >
   <slot />

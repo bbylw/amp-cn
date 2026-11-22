@@ -319,7 +319,7 @@ const showToc = headings !== false && (hasToc || headings.length > 0);
   )}
 
   <script>
-    import { mount, lockScroll, unlockScroll, generateId } from "@cloudflare/nimbus-docs/client";
+    import { mount, generateId } from "@cloudflare/nimbus-docs/client";
 
     const CLOSE_DURATION_MS = 250;
     const DESKTOP_QUERY = "(min-width: 48rem)";
@@ -375,7 +375,6 @@ const showToc = headings !== false && (hasToc || headings.length > 0);
         moveTreeToDrawer();
         dialog.showModal();
         dialog.dataset.state = "closed";
-        lockScroll();
         trigger.setAttribute("aria-expanded", "true");
 
         // Flush the closed transform, then open in the same tick so the slide
@@ -415,7 +414,6 @@ const showToc = headings !== false && (hasToc || headings.length > 0);
         clearTimer();
         dialog.dataset.state = "closed";
         moveTreeToRail();
-        unlockScroll();
         trigger.setAttribute("aria-expanded", "false");
         trigger.focus();
       }, { signal });
@@ -440,8 +438,6 @@ const showToc = headings !== false && (hasToc || headings.length > 0);
         clearTimer();
         moveTreeToRail();
         trigger.setAttribute("aria-expanded", "false");
-        // A swap while open never fires `close`; balance the scroll lock.
-        if (dialog.open) unlockScroll();
       };
     });
   </script>

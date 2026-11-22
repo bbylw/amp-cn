@@ -2,7 +2,7 @@
  *  that opens it in the zoom dialog, and keeps that right as images load,
  *  appear (a tab or disclosure opening) or the viewport changes. */
 
-import { lockScroll, mount, unlockScroll } from "@cloudflare/nimbus-docs/client";
+import { mount } from "@cloudflare/nimbus-docs/client";
 
 // Below this gain, zooming isn't worth a button (a phone screenshot already
 // fills the column).
@@ -15,7 +15,6 @@ mount("[data-nb-image-zoom]", (root) => {
   const initial = dialog.querySelector<HTMLElement>(".nb-zoom-img");
   if (!content || !initial) return () => {};
   let media: HTMLElement = initial;
-  let opener: HTMLElement | null = null;
 
   const worthZooming = (img: HTMLImageElement): boolean => {
     if (img.closest(`a, button:not(${TRIGGER}), [data-nb-zoom="off"]`)) return false;
@@ -71,9 +70,8 @@ mount("[data-nb-image-zoom]", (root) => {
     view.className = "nb-zoom-img";
     media.replaceWith(clone);
     media = clone;
-    opener = trigger;
+    // showModal() returns focus to the trigger on close; no code needed.
     dialog.showModal();
-    lockScroll();
   };
 
   const onContentClick = (event: MouseEvent) => {
@@ -82,11 +80,6 @@ mount("[data-nb-image-zoom]", (root) => {
   };
   // Esc, the close button, or a click anywhere closes it.
   const onDialogClick = () => dialog.close();
-  const onClose = () => {
-    unlockScroll();
-    opener?.focus();
-    opener = null;
-  };
   // An image's box changes when it loads, when a hidden tab or disclosure
   // shows it, and when the viewport does; the viewport also moves the cap.
   let frame = 0;
@@ -99,20 +92,15 @@ mount("[data-nb-image-zoom]", (root) => {
 
   content.addEventListener("click", onContentClick);
   dialog.addEventListener("click", onDialogClick);
-  dialog.addEventListener("close", onClose);
   addEventListener("resize", schedule);
 
   return () => {
     content.removeEventListener("click", onContentClick);
     dialog.removeEventListener("click", onDialogClick);
-    dialog.removeEventListener("close", onClose);
     removeEventListener("resize", schedule);
     observer.disconnect();
     cancelAnimationFrame(frame);
-    // `close` fires later, after the page has gone; release the lock now.
-    if (dialog.open) {
-      dialog.close();
-      unlockScroll();
-    }
+    // `close` fires later, after the page has gone; close it now.
+    if (dialog.open) dialog.close();
   };
 });

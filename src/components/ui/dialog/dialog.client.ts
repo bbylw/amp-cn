@@ -1,31 +1,39 @@
-import { lockScroll, mount, unlockScroll } from "@cloudflare/nimbus-docs/client";
+import { mount } from "@cloudflare/nimbus-docs/client";
+
+// Modern browsers light-dismiss a `closedby="any"` dialog themselves, and keep
+// scroll gestures out of the page with the `dialog:modal` / `::backdrop` rules
+// in globals.css. Safari still ignores `closedby`, so only there do we close on
+// a press-and-release outside the dialog's content.
+const nativeClosedBy = "closedBy" in HTMLDialogElement.prototype;
 
 mount("[data-dialog]", (root) => {
-  if (!(root instanceof HTMLDialogElement)) return () => {};
+  if (nativeClosedBy || !(root instanceof HTMLDialogElement)) return () => {};
   const dialog = root;
 
-  const sync = () => (dialog.open ? lockScroll() : unlockScroll());
-  const observer = new MutationObserver(sync);
-  observer.observe(dialog, { attributes: true, attributeFilter: ["open"] });
-
-  // Close on a backdrop click only when the press started there too: a text
-  // selection dragged out of the dialog ends with a click on the backdrop.
-  let pressedOn: EventTarget | null = null;
-  const onPress = (e: PointerEvent) => {
-    pressedOn = e.target;
+  // Test the pointer position rather than only the event target: the dialog is
+  // also the target for its own padding and for the gaps between its children.
+  // A dialog that fills the viewport paints its own backdrop, so there the
+  // dialog element reacting to the press *is* the backdrop.
+  const outside = (e: PointerEvent) => {
+    if (e.target === dialog) return true;
+    const r = dialog.getBoundingClientRect();
+    return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
   };
-  const onBackdrop = (e: MouseEvent) => {
-    if (e.target === dialog && pressedOn === dialog) dialog.close();
-    pressedOn = null;
+  // Require the press and the release to both land outside, so a text-selection
+  // drag that ends on the backdrop does not dismiss the dialog.
+  let pressedOutside = false;
+  const onPointerDown = (e: PointerEvent) => {
+    pressedOutside = outside(e);
   };
-  dialog.addEventListener("pointerdown", onPress);
-  dialog.addEventListener("click", onBackdrop);
+  const onPointerUp = (e: PointerEvent) => {
+    if (pressedOutside && outside(e)) dialog.close();
+    pressedOutside = false;
+  };
+  dialog.addEventListener("pointerdown", onPointerDown);
+  dialog.addEventListener("pointerup", onPointerUp);
 
   return () => {
-    observer.disconnect();
-    dialog.removeEventListener("pointerdown", onPress);
-    dialog.removeEventListener("click", onBackdrop);
-    // A swap while open never fires `close`; balance the scroll lock.
-    if (dialog.open) unlockScroll();
+    dialog.removeEventListener("pointerdown", onPointerDown);
+    dialog.removeEventListener("pointerup", onPointerUp);
   };
 });

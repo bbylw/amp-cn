@@ -2,13 +2,15 @@
 /**
  * Dialog — modal overlay built on the native <dialog>.
  *
- * Open with `el.showModal()`, close with `el.close()` or Escape.
- * Scroll-lock and backdrop-click-to-close are handled automatically.
+ * Open with `el.showModal()` (or a `<button command="show-modal">`), close
+ * with `el.close()`, Escape, or a `command="close"` button.
+ * Light dismiss is native (`closedby="any"`); page scroll under the modal is
+ * contained with CSS, not by locking the document.
  *
  *   <Dialog id="confirm">
  *     <DialogContent>
  *       <div>Are you sure?</div>
- *       <DialogClose>Cancel</DialogClose>
+ *       <DialogClose commandfor="confirm">Cancel</DialogClose>
  *     </DialogContent>
  *   </Dialog>
  */
@@ -24,6 +26,7 @@ const { class: className, "data-slot": slot = "dialog", ...attrs } = Astro.props
 <dialog
   data-slot={slot}
   data-dialog
+  closedby="any"
   class={cn("fixed inset-0 z-50 m-0 h-full w-full max-h-full max-w-full bg-transparent p-0 backdrop:bg-black/40", className)}
   {...attrs}
 >

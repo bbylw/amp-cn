@@ -315,7 +315,20 @@ body {
 	}
 }
 
-/* ---- Scroll lock (used by native <dialog> overlays) ---- */
+/* ---- Modal scroll containment ----
+   A modal dialog is inert for the page behind it but does not stop gestures
+   from scrolling that page: contain them on the dialog and give ::backdrop a
+   scroll container of its own. `overflow: hidden` on <html>/<body> is not
+   needed and would drop the root scrollbar and break sticky chrome. */
+dialog:modal {
+	overscroll-behavior: contain;
+}
+dialog::backdrop {
+	overflow: hidden;
+	overscroll-behavior: contain;
+}
+
+/* Scroll lock helper from the Nimbus client, kept for components that opt in. */
 [data-scroll-locked] {
 	overflow: hidden;
 }
