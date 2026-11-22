@@ -1,0 +1,229 @@
+---
+title: Portal 与桌面
+description: 把 orb 里的服务开成带认证的链接，在上面直接评论。
+sidebar:
+  order: 14
+  group:
+    label: Orbs
+---
+
+Portal 是带认证的 URL，把 orb 里运行的 web 服务暴露出来，你可以从线程的 **Portal** 标签直接打开 dev server 或预览应用。跑你自己机器上的线程也能共享 portal。
+
+在 portal 里可以像浏览器一样跳转，也能圈选页面元素、把评论直接发给 agent。最省事的开始方式：
+
+```text
+启动 dev server，给我一个 portal 链接。
+```
+
+## 每个文件各管一件事
+
+| 文件 | 用途 |
+| --- | --- |
+| `.agents/setup` | 安装依赖、生成文件、检查工具，准备新 orb |
+| `.agents/resume` | 激活后和每次唤醒后做可选、快速的认证或修复 |
+| `.amp/services.yaml` | 声明长期运行的服务及其 portal 链接 |
+| `.amp/portals/*.json` | 保存当前 orb 与线程生成的 portal 链接 |
+
+准备环境用 `.agents/setup`；**不要**在 setup 里启动 dev server 或运行 `amp orb services ensure`。长驻服务的生命周期归 `.amp/services.yaml` 管。
+
+大多数仓库不需要为 portal 写 `.agents/resume`。只放 Amp 无法作为服务托管的快速幂等修复（比如重连隧道）；Amp 最多等 10 秒就继续。不要在它里面装依赖或重启已声明的服务。
+
+Amp 在确保服务时生成 `.amp/portals/*.json`；要改声明的服务或链接就改 `.amp/services.yaml`，并把这个目录加进 `.gitignore`。
+
+## 声明服务
+
+把 `.amp/services.yaml` 提交进仓库，每个 orb 就知道怎么跑这个仓库的 dev 服务：
+
+```yaml
+services:
+  web:
+    command: pnpm dev -- --host 0.0.0.0 --port "$PORT"
+    cwd: app
+    health: /healthz
+    env:
+      API_MODE: development
+    review: true
+    portal:
+      url: /
+      title: App
+      description: Use the seeded development account.
+    portals:
+      - url: /admin
+        title: Admin
+        description: Open the administration tools.
+```
+
+文件必须有非空的顶层 `services` 映射。服务名用 1–32 个字母、数字或连字符，以字母或数字开头。
+
+| 字段 | 作用 |
+| --- | --- |
+| `command` | 必填的 shell 命令，通过登录 shell 运行；有 portal 的服务必须监听 `$PORT` |
+| `cwd` | 相对仓库根目录的工作目录，默认仓库根 |
+| `port` | 固定的本地端口（1–65535）；省略时 Amp 选一个重启后保持不变的空闲端口 |
+| `env` | 字符串环境变量；值可以引用另一个服务的公开 URL |
+| `health` | 端口打开后 Amp 请求的 HTTP 路径，2xx/3xx 视为就绪 |
+| `portal` | 主 portal 链接；写 `true` 表示用 `/` 和服务名 |
+| `portals` | 同一服务的更多链接，每项需要 `url` 和 `title` |
+| `review` | 是否注入评论组件，默认 `true` |
+| `platforms` | 可选的非空列表，`linux` 或 `darwin`；省略表示所有平台 |
+
+`PORT`、`PUBLIC_URL`、`AMP_THREAD_ID` 由 Amp 管理，不能在 `env` 里设置。每个服务都能拿到 `PORT` 和 `AMP_THREAD_ID`，至少有一个 portal 链接的服务还能拿到 `PUBLIC_URL`。portal 里唯一支持的占位符是 `$AMP_USER_EMAIL`，会在 `url`、`title`、`description` 中被替换（在 url 里会做 URL 编码）。
+
+## 启动已声明的服务
+
+```bash
+amp orb services ensure
+```
+
+`ensure` 读取 `.amp/services.yaml`、逐个检查、启动缺失的服务并等待就绪，然后写入 Portal 标签状态并打印确切的 URL。打开尚未启动的已声明 portal 时，Portal 标签也会跑一次 ensure。
+
+用打印出来的 URL。不要用裸 localhost、不要自己拼 portal 主机名，也不要把它存进配置——应用需要公开源时运行时读 `PUBLIC_URL`。需要结构化状态的脚本用 `amp orb services ensure --json`。
+
+## 健康检查
+
+不设 `health` 时，端口能连上就算就绪。应用在端口打开后还需要时间时设置它：
+
+```yaml
+services:
+  web:
+    command: pnpm dev -- --host 0.0.0.0 --port "$PORT"
+    health: /healthz
+    portal: true
+```
+
+Amp 对该路径发 GET，2xx/3xx 通过。注意 portal URL 在就绪失败时也可能已经存在，URL 本身不能证明应用响应正常。
+
+## 服务之间互相引用
+
+一个服务可以用 `env` 引用另一个服务的最终公开 URL：
+
+```yaml
+services:
+  api:
+    command: go run ./cmd/api
+    env:
+      FRONTEND_URL: ${services.web.publicURL}
+  web:
+    command: pnpm dev -- --host 0.0.0.0 --port "$PORT"
+    portal: true
+```
+
+Amp 会先启动被引用的服务并替换成最终 URL。被引用方必须有 portal；引用不存在的服务或形成循环会被拒绝。前后端分开时，暴露前端并让 API 请求走前端 dev server 的代理——两个 portal 主机之间的浏览器请求不被支持（CORS 预检不带 portal 认证）。
+
+用文件夹把相关链接归组：
+
+```yaml
+services:
+  web:
+    command: pnpm dev
+    portal: true
+    portals:
+      - folder: Marketing site
+        links:
+          - url: /home
+            title: Homepage
+          - url: /pricing
+            title: Pricing
+      - url: /storybook
+        title: Storybook
+```
+
+## 管理服务
+
+```bash
+amp orb service list
+amp orb service status web
+amp orb service logs web
+amp orb service restart web
+amp orb service stop web
+```
+
+改过命令、依赖或源码而 dev server 不会自己重载时，重启服务；重启会读最新的 `.amp/services.yaml` 并保留端口与 portal 配置。
+
+不要用 `nohup`、`setsid`、后台 `&` 或 tmux 让 portal 服务活着——Amp 更新或 orb 恢复时它们可能被停掉。用受管服务。
+
+## 临时启动一个服务
+
+只在这一条线程需要的服务：
+
+```bash
+amp orb service start app \
+  --command 'npm run preview -- --host 0.0.0.0 --port "$PORT"' \
+  --portal \
+  --title 'App' \
+  --description 'Use the seeded development account.'
+```
+
+外层引号防止 shell 提前展开 `$PORT`。也可以传 `--cwd`、`--port`。带 `--portal` 时 Amp 等监听、探测 HTTP/HTTPS、写 `.amp/portals/<name>.json` 并打印 URL。它最多等 60 秒，端口写错会长时间等待后报 `NOT RESPONDING` 并以 1 退出。名字与 `.amp/services.yaml` 里已声明冲突会被拒绝；以后还会用到就搬进 yaml。
+
+只想给已经在监听的服务一个链接，用更底层的 `amp orb portal <port> --title 'App'`（可加 `--description`）：它只创建/打印 URL 并注册到 Portal 标签，不启动也不托管进程。
+
+## Portal 主机名
+
+默认是 `onamp.dev` 的子域。要给某个 portal 指定主机名，用 `amp orb portal <port> --hostname <hostname>`，可以是 `onamp.dev` 的托管主机名，也可以是个人或工作区 **Domains** 设置里已激活的自定义域。主机名只作用于那个端口。
+
+在个人或工作区的 **Domains** 页把某个域设为 **Make Default for Portals**，新链接就用它的子域（如 `t-<thread>-p<port>.portal.example.com`），你的人只需信任自己的域。工作区默认值作用于工作区项目，个人默认值作用于个人项目和项目之外的线程；已有 URL 继续有效。项目也能在 **Orb → Portals** 里选自己的默认 portal 域；一旦项目不再使用某个域（且那不是所有者的默认域），该域名下的链接就失效。
+
+自定义主机名在线程归档后仍然保留。想把它挪到另一条线程的 portal：
+
+```bash
+amp orb portal <port> --hostname <hostname> --take-over
+```
+
+只能接管新线程有权使用的主机名；不加 `--take-over` 会提示已被占用。如果想让应用脱离 orb、长期用同一主机名服务，可以用 `amp boxes deploy --domain <hostname> --take-over` 迁到 [Box](/boxes)；portal 无法从 box 应用手里把主机名抢回来。
+
+## 评论与反馈
+
+从线程的 **Portal** 标签打开。浮动评论按钮让你选中元素并把评论发回线程：Amp 会收到评论、选中的文本和页面位置，应用能提供时还会收到源码位置。portal 在独立标签页打开时，评论按钮旁的箭头可以回到线程。
+
+键盘操作：macOS 用 `Cmd`+`Shift`+`.`，其它系统用 `Ctrl`+`Shift`+`.`，然后点元素；再按一次或按 `Esc` 取消。`Cmd`+`.`（`Ctrl`+`.`）显示/隐藏评论按钮。
+
+评论组件默认开启。对整个服务关掉：
+
+```yaml
+services:
+  web:
+    command: pnpm dev -- --host 0.0.0.0 --port "$PORT"
+    review: false
+    portal: true
+```
+
+只对单个响应关掉，加响应头 `x-amp-review-widget: off`。
+
+:::note
+portal 的 WebSocket 经过 Amp 的服务器，每次 Amp 部署都会断开它们。为避免 Vite 在部署时整页重载丢表单，Amp 会在页面第一个 `<script>` 前注入一小段脚本，只接管带 `vite-hmr` 子协议的 socket，并在关闭码 4012 时静默重连。评论组件关闭或 CSP 禁止内联脚本时不会注入；想主动关掉，在页面打开 Vite socket 前设 `window.ampPortalWebSocketRestart = false`。
+:::
+
+页面里可以用 `target="_amp"` 的链接从 Portal 面板跳回 Amp 应用里的页面：
+
+```html
+<a href="https://ampcode.com/threads/T-..." target="_amp">Open the thread in Amp</a>
+```
+
+## 开发态登录
+
+**Vite**：Amp 启动带 portal 的服务时会设置 `__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS`（如 `.onamp.dev`），Vite 6.1+ 会据此放行，多数项目无需配置。项目自己的 Vite 配置覆盖了这个行为时，只在 orb 里放开：
+
+```js
+export default defineConfig({
+	server: {
+		allowedHosts: process.env.AMP_ORB ? true : undefined,
+	},
+})
+```
+
+**Laravel**：从 `.amp/services.yaml` 启动，运行时把 `$PUBLIC_URL` 赋给 `APP_URL` 与 `ASSET_URL`，不要保存生成的 portal 主机名：
+
+```yaml
+services:
+  web:
+    command: >-
+      php artisan optimize:clear &&
+      APP_URL="$PUBLIC_URL" ASSET_URL="$PUBLIC_URL"
+      php artisan serve --host=0.0.0.0 --port="$PORT"
+    portal: true
+```
+
+公开源变化后，先清配置与整页缓存再监听；用 Laravel 常规的可信代理处理，别自己检查厂商专有 header。
+
+**开发态免密登录**：给 agent 和评审者加一条只在开发环境生效的路由，例如 `GET /__dev/log-me-in/<email>?returnTo=<path>`：按邮箱找到用户（没有就创建）、建立会话并设置与真实登录一致的 cookie，跳转到同源的相对路径。拒绝绝对地址和协议相对的 `returnTo`（防开放重定向）；缺少或不安全时跳 `/`；非本地开发环境返回 404。

@@ -1,0 +1,36 @@
+---
+title: 用 Orb 上网
+description: 让 orb 用自己的 Chrome 替你操作网站，并从你的网络出口浏览。
+sidebar:
+  order: 13
+---
+
+orb 可以替你上网：在 orb 线程里说一声，agent 会打开网站、登录、填表，并带着截图向你回报。
+
+```text
+去 SilkCards 上订 250 张带公司 logo 和二维码的卡片。
+```
+
+在线程的 **Desktop** 标签里看着它做，或者自己接管。与你电脑上的 computer use 不同，orb 不会干扰你的工作，而且它只拿到需要的密码和会话，而不是全部。
+
+## 用 profile 保持登录
+
+[profile](/orbs/profiles) 保存 Chrome 的登录状态、密码和站点数据，使用它的每个 orb 一启动就是已登录。在线程 **••• › Orb › Profile** 或 Desktop 标签的 profile 菜单里选择。要使用 profile，先在实验特性设置里打开 **Profiles**。
+
+## 从你自己的网络出口浏览
+
+很多站点会拦截云 IP 和 agent。Orb 网络路由把 orb 的网络流量经你家里或办公室的电脑转出，不需要配 Tailscale 或 VPN。
+
+先把那台电脑的网络共享出来，并在 orb 使用期间保持开机、不休眠：
+
+- **macOS** — 在 Mac 应用里打开 **Settings › Runner**，开启 **Share This Mac's Network Connection**
+- **Windows** — 在 Windows 应用的 **Settings › Runner** 里开启 **Share This Computer's Network Connection**
+- **Linux** — 运行 `amp --no-tui --runner-id home --share-network`
+
+然后在线程的 **••• › Orb › Network Routing** 里选中那台电脑（同一菜单里的 **Add Exit Node** 会显示这些步骤）。
+
+路由在 orb 启动后才生效，所以 orb 克隆仓库、跑 setup 脚本走的是它自己的连接。工作区级别的设置，以及让 agent 自己选路，见 [Runners](/cli/runners)。
+
+## 交给 agent 处理
+
+在 orb 里让 Amp 上网做事，它会用线程的 profile；站点需要你的网络时，自动走你共享的电脑。想让它自己挑选或创建 profile，见 [浏览器 Profiles](/orbs/profiles)。

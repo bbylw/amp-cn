@@ -1,0 +1,130 @@
+---
+title: Python SDK
+description: amp-sdk 的 API 参考。
+sidebar:
+  order: 4
+  group:
+    label: 参考
+---
+
+`amp-sdk` 的 API 参考。
+
+## 安装
+
+```bash
+pip install amp-sdk
+curl -fsSL https://ampcode.com/install.sh | bash   # 或 npm install -g @ampcode/cli
+```
+
+需要 Amp Neo 之前的版本时：`pip install amp-sdk==0.1.5` 配 `npm install -g @ampcode/cli@0.0.1779896748-g596c49`，并 `export AMP_CLI_PATH="$(command -v amp)"` 让 Python SDK 使用该 CLI。
+
+## 函数
+
+### execute()
+
+```python
+async def execute(
+    prompt: Union[str, AsyncIterator[UserInputMessage]],
+    options: Optional[AmpOptions] = None
+) -> AsyncIterator[StreamMessage]
+```
+
+- `prompt` —— 字符串，或多轮对话用的用户输入消息异步迭代器
+- `options` —— `AmpOptions`
+
+```python
+import asyncio
+from amp_sdk import execute, AmpOptions
+
+async def main():
+    async for message in execute("Analyze this codebase", AmpOptions(cwd="./my-project")):
+        if message.type == "assistant":
+            print("Assistant:", message.message.content)
+        elif message.type == "result" and not message.is_error:
+            print("Final result:", message.result)
+            break
+
+asyncio.run(main())
+```
+
+### create_user_message()
+
+```python
+def create_user_message(text: str, request_id: str | None = None) -> UserInputMessage
+```
+
+- `text` —— 文本
+- `request_id` —— 可选，1–256 字符；同一线程上重试复用可避免重复消息
+
+```python
+from amp_sdk import create_user_message
+
+message = create_user_message("Analyze this code", request_id="analysis-123")
+```
+
+## 类型
+
+### AmpOptions
+
+```python
+class AmpOptions(BaseModel):
+    cwd: Optional[str] = None
+    mode: str = "medium"
+    model: Optional[str] = None
+    effort: Optional[Literal["none", "minimal", "low", "medium", "high", "xhigh", "max"]] = None
+    no_archive_after_execute: Optional[bool] = None
+    visibility: Optional[Literal["private", "unlisted", "workspace", "group"]] = "workspace"
+    settings_file: Optional[str] = None
+    log_level: Optional[Literal["debug", "info", "warn", "error", "audit"]] = None
+    log_file: Optional[str] = None
+    env: dict[str, str] = Field(default_factory=dict)
+    continue_thread: Union[bool, str, None] = None
+    mcp_config: Optional[Union[MCPConfig, str]] = None
+    skills: Optional[str] = None
+    enabled_tools: Optional[list[str]] = None
+    labels: Optional[list[str]] = None
+    thinking: bool = False
+    executor: Optional[Literal["local", "orb", "runner"]] = None
+    runner_id: Optional[str] = None
+    runner_dir: Optional[str] = None
+    project: Optional[str] = None
+    title: Optional[str] = None
+```
+
+| 属性 | 说明 |
+| --- | --- |
+| `cwd` | 本地 CLI 子进程的工作目录 |
+| `mode` | 内置 `low` / `medium` / `high` / `ultra`，也接受插件定义的模式字符串 |
+| `model` | 以 `provider/name` 指定模型（如 `openai/gpt-6-astra`），替代 `mode` |
+| `effort` | `model` 的推理强度，省略则用模型默认值 |
+| `no_archive_after_execute` | 执行结束后不归档新线程 |
+| `visibility` | 线程可见性，默认 `workspace` |
+| `settings_file` | 自定义设置文件 |
+| `log_level` / `log_file` | 日志级别与文件 |
+| `env` | 传给 CLI 的环境变量 |
+| `continue_thread` | `True`、`False` 或线程 ID |
+| `mcp_config` | MCP 配置对象或路径 |
+| `skills` | 技能目录 |
+| `enabled_tools` | 只启用列出的工具 |
+| `labels` | 线程标签 |
+| `thinking` | 输出思考块 |
+| `executor` | `local`（默认）/ `orb` / `runner` |
+| `runner_id` / `runner_dir` | runner 及它服务的一个目录的绝对路径，省略则用起始目录 |
+| `project` | 仅 orb 执行时可用；省略时从 `cwd` 的 Git remote 推断，匹配不到则无仓库启动 |
+| `title` | 线程标题 |
+
+`executor="orb"` 让 agent 在 [orb](/orbs) 里跑，`executor="runner"` 配 `runner_id` 在 [runner](/cli/runners) 上跑。远程执行时 `prompt` 必须是字符串，`enabled_tools`、`skills`、`mcp_config` 等本地选项会被忽略并警告，需在 Amp 项目或 runner 上配置；插件模式需在 runner 上加载。每条线程只有一个工作目录，多目录请分别 `execute()`；`continue_thread` 会忽略该选项并沿用原目录。`cwd` 只影响本地子进程目录，不影响远程 runner 目录。
+
+### StreamMessage
+
+与 [流式 JSON](/cli/streaming-json) 一致：`system`（init，含 `cwd`、`session_id`、`tools`、`mcp_servers`）、`user`、`assistant`、`result`（`is_error`、`num_turns`、`result`）。字段名沿用 snake_case。
+
+### UserInputMessage
+
+```python
+UserInputMessage(type="user", request_id="…", message={"role": "user", "content": [{"type": "text", "text": "…"}]})
+```
+
+## 鉴权
+
+SDK 启动本机 Amp CLI，因此用 CLI 已有的登录状态；在 CI 或服务器上可以设置 `AMP_API_KEY`（服务账号或项目 key）代替交互登录。每个请求都计入该账号或工作区的用量。

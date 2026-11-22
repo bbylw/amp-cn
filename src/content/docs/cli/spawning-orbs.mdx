@@ -1,0 +1,78 @@
+---
+title: 从 CLI 启动 orb
+description: 用 amp -ox 把一次 prompt 交给 orb，命令立刻返回。
+sidebar:
+  order: 3
+  group:
+    label: CLI
+---
+
+`amp -ox` 把 [execute 模式](/cli/execute)的 prompt 放到 [orb](/orbs) 里跑，而不是在你的机器上。`-ox` 就是 `--orb-execute -x` 的简写。
+
+CLI 会创建一个新线程，agent 在 Amp 服务器上的 orb 里运行，打印线程 URL 后立刻退出。命令返回后 agent 继续干活，不占用你的终端，也不要求电脑保持唤醒：
+
+```bash
+amp -ox "Investigate why the latest CI run on main failed"
+# https://ampcode.com/threads/T-…
+```
+
+打开 URL 就能看线程，也可以从网页、CLI 或其它设备继续。用 [`amp sync`](/orbs) 把 orb 里的改动同步回本机。
+
+管道输入与 `-x` 一样，CLI 会把 stdin 放进发给 orb 的 prompt：
+
+```bash
+git diff main | amp -ox "Investigate any DB perf risks in this diff, report back to me on Slack"
+```
+
+## 附带文件
+
+`--attach <path>` 上传本地文件并把附件 URL 加进消息，可以重复：
+
+```bash
+amp -ox "Compare these files" --attach ./report.pdf --attach "/tmp/notes with spaces.txt"
+```
+
+## 用交互式 TUI
+
+`--executor orb` 打开 TUI 并选中一条新的 orb 线程：
+
+```bash
+amp --executor orb
+```
+
+Amp 会等你发出第一条 prompt 才创建线程、启动 orb；提交前可以改 prompt、选模式、换项目。
+
+当前目录不对应任何 Amp 项目时 TUI 会警告，orb 会在没有仓库的情况下启动；也可以在提交前于 TUI 里选项目。
+
+executor 也可以是本地进程或你的某个 runner：
+
+```bash
+amp --executor local
+amp --executor runner:my-runner-id
+```
+
+execute 模式同样支持，例如 `amp -x "Update the README" --executor orb` 等价于 `amp -ox "Update the README"`。
+
+## 选择项目
+
+orb 从[项目](/workspace)启动。默认看当前目录的 Git remote 找匹配项目；用 `--project` 显式指定（例如在检出之外运行，或目录匹配到多个项目）：
+
+```bash
+amp -ox "Update the README" --project my-org/my-repo
+```
+
+值可以是 Amp 项目（`namespace/name`）、GitHub 的 `owner/repo`，或仓库 URL。没有匹配又没传 `--project` 时会警告并在无仓库的情况下启动。
+
+## orb 规格与线程选项
+
+`--orb-size` 可以用与项目默认不同的规格，可选值见[规格与价格](/orbs)。
+
+```bash
+amp -ox "Run the full test suite" --orb-size xl
+```
+
+也可以传 `--mode`、`--model` 等与 `-x` 相同的选项。
+
+## 与 agent-to-agent 的关系
+
+`amp -ox` 适合从脚本或 CI 里发起一次性任务。若想让正在运行的 agent 之间互相委派（例如主 agent 派子 agent 去 orb 里跑），那是 [agent 之间通信](/orbs/agent-to-agent) 与 [`Task` 子 agent](/models/subagents) 的领域。

@@ -1,0 +1,87 @@
+---
+title: GitLab
+description: 连接 gitlab.com 或自管理实例，推送、开 MR、跟踪 CI。
+sidebar:
+  order: 2
+  group:
+    label: 集成
+---
+
+连上 GitLab 账号后，agent 可以在 gitlab.com 或自管理实例上克隆、推送、运行 `glab`，并在线程里跟踪 merge request、issue 与 CI。
+
+## 连接
+
+打开 **Settings → Integrations & MCP**，找到 **GitLab** 卡片：
+
+- **gitlab.com** — 点 **Connect GitLab** 并登录，Amp 通过自己的 OAuth 应用连接
+- **自管理实例** — 先由工作区管理员注册实例并配置 OAuth 应用；之后卡片会列出该实例，点它那一行的 **Connect GitLab**（卡片顶部按钮则变成连接 gitlab.com）
+
+GitLab 会要求授权两个 scope：`api`（读账号、MR、issue、pipeline，安装 Push Updates）和 `write_repository`（HTTPS 克隆与推送；`api` 不覆盖 Git）。GitLab 授予的 scope 更少时 Amp 不会保存连接。
+
+### 用个人访问令牌连接
+
+想精确限制范围，可以点 **Use a Token**，填实例 URL 与令牌后连接。令牌会替换该实例上已有的连接，Amp 用它做全部事情，包括 orb 里的 Git、`glab` 与订阅。
+
+- **细粒度令牌** — 限制到你指定的项目；给 User: Read（Amp 需要知道属于哪个账号），再给需要跟踪的项目的 Read 权限（含 MR、issue、pipeline），以及 Repository read and write
+- **传统令牌** — 需要 `api` 与 `write_repository`
+
+令牌不会刷新；过期或被吊销后需要用新令牌重新连接。
+
+每个实例一个连接，显示为「@alice on gitlab.com」这样的行：**Disconnect** 删除令牌并撤销授权；**Reconnect** 在连接失效（例如被撤销或过期）时重新登录。
+
+## 连接用来做什么
+
+- **orb 里克隆与推送** — 启动 orb 前 Amp 检查连接是否有读权限，然后在 orb 里以你的身份克隆、抓取、推送
+- **orb 里的 `glab`** — 已预装并用你的连接登录，`glab mr create`、`glab ci view` 直接可用
+- **创建项目** — New Project 会列出你所属的 GitLab 项目
+- **MR / issue / pipeline 详情** — agent 通过 Amp 读取，这些读操作不会把令牌交给 orb
+- **订阅** — 线程可以跟踪 MR、issue 与 CI
+
+分支保护和项目权限与你本机推送时完全一致。
+
+### orb 如何认证
+
+agent 每次对 GitLab 执行 Git 操作时，Git 会向 Amp 的凭据助手要令牌（覆盖 gitlab.com 和你连接的所有实例）。`glab` 也走同一助手，并且只把某主机的令牌发给该主机。
+
+如果 orb 里设置了 `GITLAB_TOKEN`、`GITLAB_ACCESS_TOKEN`、`OAUTH_TOKEN` 或 `GLAB_CONFIG_DIR`（例如作为项目密钥），`glab` 会用它们而不是你的连接——想用连接就把这些从 **Secrets & Env Vars** 里删掉。orb 没有 GitLab 的 SSH 密钥，`glab` 走 HTTPS。
+
+跑在 [runner](/cli/runners) 或本地 CLI 会话里的线程，用的是那台机器的 Git 配置与凭据。
+
+### Amp 访问不到的实例
+
+实例在私有网络里、Amp 服务器连不上时无法直接连接。可以自己给 orb 发令牌：建一个带 `api` 和 `write_repository` 的 GitLab 令牌，存成项目密钥（如 `GITLAB_TOKEN_FOR_ORBS`，**不要**叫 `GITLAB_TOKEN`，否则 `glab` 会在所有主机上用它），然后把下面这条命令加到项目的 pre-clone 脚本里：
+
+```bash
+git config --global credential.https://gitlab.example.com.helper \
+  '!f() { test "$1" = get && printf "username=oauth2\npassword=%s\n" "$GITLAB_TOKEN_FOR_ORBS"; }; f'
+```
+
+这样 Git 每次克隆、抓取、推送都从密钥读取令牌，`glab` 也走同一助手；orb 里没有文件保存令牌，因此不会进入[项目快照](/orbs/customizing)。**不要**对该实例用 `glab auth login`——它会把令牌写进 `glab` 配置文件，那会进快照。
+
+## 自管理实例
+
+工作区为成员使用的每个自管理实例注册一次，之后成员就能用工作区的 OAuth 应用连接，工作区也能安装 Push Updates、让线程订阅该实例的项目。
+
+注册时需要实例 URL、管理员创建 OAuth 应用（回调地址由 Amp 给出）、填回 Client ID/Secret。成员断开后重新连接即可。
+
+## 网络要求
+
+- **Amp → 你的 GitLab** — 来自 [Amp 服务器 IP](/reference/egress-ips)，用于 API 检查、绑定账号、刷新 OAuth、安装 Push Updates 与订阅
+- **你的 GitLab → Amp** — Push Updates 的 webhook 投递
+- **orb → 你的 GitLab** — 来自 orb 宿主机的地址（会变化）；实例若只允许已知 IP，请用 Tailscale 或用上面的令牌方式
+
+实例屏蔽 Amp 时，连接检查会给出具体原因（例如返回 403 或超时）。
+
+## Push Updates
+
+Push Updates 让 GitLab 的推送事件唤醒对应的 Amp 线程。安装方式：在 GitLab 卡片的 **Set Up Push Updates** 里选择实例并授权；Amp 会自动创建 webhook。也可以手动建 webhook，指向 Amp 给出的地址，并填共享密钥。Amp 用该密钥校验每次投递。安装需要 `api` scope 与管理权限。
+
+## 订阅
+
+线程可以订阅 merge request、issue 或 CI：
+
+```text
+跟踪这个 MR，CI 失败就修，通过后告诉我。
+```
+
+创建方式包括线程里的请求、GitLab 卡片里的订阅设置，或 `amp gitlab subscribe` 系列命令。用服务账号运行 spawner 时，订阅归属该服务账号连接。

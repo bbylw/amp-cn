@@ -1,0 +1,100 @@
+---
+title: Amp SDK
+description: 在 TypeScript 或 Python 程序里调用 Amp agent。
+sidebar:
+  order: 2
+  group:
+    label: 参考
+---
+
+Amp SDK 让你在 TypeScript 或 Python 程序里程序化地使用 Amp agent。
+
+## 能做什么
+
+- **流式输入** — 一条一条把消息送给 agent
+- **流式输出** — agent 运行时收到结构化 JSON（system、assistant、result）
+- **多轮对话** — 跨多次推理调用保持来回交互
+- **线程连续性** — 继续已有线程（最近一条或按 ID），构建有状态的 agent 工作流
+- **程序化设置** — 不用交互就能配置工作目录、设置与工具，适合自动化
+- **MCP 集成** — 指定本次会话可用的 MCP 服务器
+- **自定义技能** — 定义并使用自定义 agent 技能
+
+典型用途：自动 PR 评审、文档生成、测试生成与执行、迁移助手、CI/CD 集成、issue 分诊、发布管理。
+
+## 安装
+
+```bash
+# TypeScript
+npm install @ampcode/sdk
+npx -y @ampcode/sdk install   # 可选：安装/升级 SDK 使用的 Amp CLI
+```
+
+```bash
+# Python
+pip install amp-sdk
+curl -fsSL https://ampcode.com/install.sh | bash
+```
+
+如果你需要用 Amp Neo 之前的版本，TypeScript 装 `@ampcode/sdk@0.1.0-20260528044221-ge0e19fa`；Python 装 `amp-sdk==0.1.5` 配 `@ampcode/cli@0.0.1779896748-g596c49`，并用 `AMP_CLI_PATH` 指向该 CLI。
+
+SDK 在本地启动 Amp CLI 进程并与之通信，所以机器上要有可用的 `amp` 与登录状态（或 `AMP_API_KEY`）。
+
+## TypeScript 快速开始
+
+```ts
+import { execute } from '@ampcode/sdk'
+
+for await (const message of execute({
+  prompt: 'Analyze this codebase',
+  options: { cwd: './my-project' },
+})) {
+  if (message.type === 'assistant') {
+    console.log('Assistant:', message.message.content)
+  } else if (message.type === 'result' && !message.is_error) {
+    console.log('Final result:', message.result)
+    break
+  }
+}
+```
+
+## Python 快速开始
+
+```python
+import asyncio
+from amp_sdk import execute, AmpOptions
+
+async def main():
+    async for message in execute("Analyze this codebase", AmpOptions(cwd="./my-project")):
+        if message.type == "assistant":
+            print("Assistant:", message.message.content)
+        elif message.type == "result" and not message.is_error:
+            print("Final result:", message.result)
+            break
+
+asyncio.run(main())
+```
+
+## 消息流
+
+与 [CLI 的流式 JSON](/cli/streaming-json) 同构：
+
+- `system`（`subtype: init`）—— 工作目录、`session_id`、可用工具、MCP 服务器状态
+- `user` —— 你的输入与工具结果
+- `assistant` —— 文本、工具调用、用量
+- `result` —— 结束标志，含 `is_error`、`num_turns`、`result`
+
+## 多轮与线程
+
+- 把 `prompt` 传成消息的异步迭代器（TS 用 `createUserMessage`，Python 用 `create_user_message`）就能多轮输入
+- `continueThread` / `continue_thread` 可以接最近一条线程或指定线程 ID，保持状态
+- TS 还提供 `threads.new()`、`threads.markdown()`、`threads.setMultiplayer()`
+
+## 执行位置
+
+`executor` 决定 agent 在哪跑：`local`（默认）、`orb`、`runner`（配 `runner_id`）。远程执行时 `prompt` 必须是字符串，且 `enabled_tools`、`skills`、`mcp_config` 等只在本地的选项会被忽略并在项目/runner 上配置；`project` 只在 orb 执行时有效。
+
+## 参考
+
+- [TypeScript SDK](/reference/sdk-typescript)
+- [Python SDK](/reference/sdk-python)
+- [插件 API](/reference/plugin-api)

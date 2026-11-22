@@ -1,0 +1,70 @@
+---
+title: 浏览器 Profiles
+description: 让 orb 里的 Chrome 保持登录状态，跨 orb 复用。
+sidebar:
+  order: 10
+  group:
+    label: Orbs
+---
+
+profile 保存你在 orb 桌面版 Chrome 里的状态：已登录的站点、保存的密码，以及 localStorage 这类站点数据。别的 orb 用同一个 profile 时，那边的 Chrome 一启动就是登录状态，你和 agent 都不用再登一次。
+
+要用 profile，先在实验特性设置里打开 **Profiles**。
+
+打开着的标签页仍属于打开它的线程：线程的 Chrome 从新标签页开始，不会串到别的线程，Chrome 重启时恢复本线程自己的标签页。
+
+可以建多个 profile，例如工作账号一个、测试账号一个。名称是 3 到 32 个字母、数字或连字符，比如 `Work`、`booking-travel`。
+
+## 选择 profile
+
+- **新线程** — 输入框的 **⋮ › Profile** 里选择，orb 就用它启动，下次新建线程会记住你的选择
+- **CLI** — `amp -ox "<提示>" --profile <名称或 ID>`
+- **Desktop 标签** — 在线程的 Desktop 标签工具栏左侧的菜单里切换；Chrome 已打开时会带着新 profile 重启
+- **线程菜单** — **••• › Orb › Profile**
+
+一个 orb 只能读写它线程所选的 profile。
+
+## 让 agent 自己选
+
+默认只有你能选。在设置里给某个 profile 打开 **Allow Agent to Select** 后，agent 就能自己切换（orb 里的任何东西都能，因为它用你的 Amp 凭据运行）。
+
+遇到需要登录的网页任务时，agent 会找合适的 profile；没有就建议新建一个（比如 `booking-travel`），由你在对话框里确认或改名。这样创建的 profile 自动允许 agent 使用，但不会进入 multiplayer 线程。也可以直接说"给我建一个出差的 profile，然后查一下美联航去东京的航班"。
+
+orb 里 agent 或脚本运行 `amp profile use <name>`，Chrome 带着该 profile 重启后命令返回；`amp profile none` 回到干净 profile。orb 之外（比如 [Puck](/workspace/puck)）用 `manage_amp` 工具、`profiles` 主题的 `use` 操作。想让所有 orb 线程都用某个 profile，在 `AGENTS.md` 里写一行：
+
+```markdown
+使用 Chrome 之前，先运行 `amp profile use Work`。
+```
+
+## 保存
+
+登录状态和 localStorage 立即同步：在一个 orb 里登录或退出，其它使用同一 profile 的 orb 几秒内跟上，无需重启 Chrome。其余数据（其它站点数据、保存的密码）每 2 分钟保存一次，切换 profile 时也会保存。
+
+两个 orb 同时改同一站点的登录状态时，先到 Amp 的生效，但**退出登录永远优先**，不会把你重新登进去。同时改 localStorage 时，不同条目的改动都保留；同一条目则先到的生效。两个 orb 同时用一个 profile 时，各自只保存自己改过的内容，双方的密码都保留。已经打开的 Chrome 会保持现状，直到带着该 profile 重启。
+
+profile 只在 Linux orb 里可用，macOS orb 不提供。
+
+## 通行密钥（passkey）
+
+orb 里的 Chrome 没有到手机、电脑或安全钥匙的蓝牙/USB 连接。要用手机上的 passkey，就在 Mac 版 Amp 应用里打开该线程并保持 Desktop 标签打开：
+
+1. 在 orb 的 Chrome 里选择用 passkey 登录
+2. 应用会问是否用手机的 passkey，并说明线程和站点，以及线程是否是 multiplayer
+3. 选 **Allow**（首次 macOS 会问是否允许 Amp 使用蓝牙）
+4. 用手机扫 Chrome 显示的二维码并确认
+
+应用只在你允许后才用蓝牙，最多 2 分钟，仅仅把你的手机信号转给 orb。只有线程所有者能做这件事；multiplayer 线程里其他人可以操作 orb 的 Chrome，包括你登录的账号。
+
+没有在 Mac 应用里打开 Desktop 标签时，Chrome 会告诉站点没有可用的 passkey 并解释原因。此时可以改用密码、验证码或手机提示登录；Google 的登录页选 **Try another way**。agent 遇到站点要求 passkey 时会告诉你怎么做。
+
+在 profile 生效时登录，只需登一次，之后用同一 profile 的 orb 启动即已登录。
+
+## Multiplayer
+
+能使用 multiplayer 线程的人就能用它的 orb（Chrome、终端、文件）。因此使用 profile 的线程不能设为 multiplayer：先把线程改成 **No Profile**，等几秒让 orb 清掉 profile。确实要在 multiplayer 里用，就在设置或 Desktop 的 profile 菜单里为该 profile 打开 **Allow in Multiplayer**；如果线程正处于 multiplayer 时关掉它，Chrome 会用干净 profile 重启。
+
+## 安全
+
+- profile 静态加密，只有你自己的 orb 线程能读
+- profile 不保存你的 Amp 登录，也不保存 orb portal 的登录
+- 删除 profile 会抹掉其中保存的一切

@@ -1,0 +1,49 @@
+---
+title: 允许的模型
+description: 决定工作区成员能用哪些模型。
+sidebar:
+  order: 4
+  group:
+    label: 企业版
+---
+
+企业版工作区管理员可以决定成员能用哪些模型：工作区设置 → **Model Routing** → **Allowed Models**。
+
+## 模型分组
+
+**Default Policy** 标签上的一些开关会一次关掉整组模型，包括内置模式使用的模型，以及 Amp 之后加入该组的模型：
+
+- **Open-Weights Models** — 关掉所有权重公开的模型（GLM、Kimi、DeepSeek、Qwen、Inkling 等）。之后 low 模式跑在 GPT-5.6 Terra 上
+- **Chinese Labs** — 位于 Open-Weights 区域内，只关掉 Z.ai、DeepSeek、Moonshot AI、阿里和 MiniMax 训练的模型；Open-Weights 关闭时它必然关闭
+- **SpaceXAI** 与 **Meta** — 关掉所有 Grok / Muse 模型
+- **Claude Fable** — 位于 Anthropic 区域，关掉所有 Claude Fable 模型。Anthropic 会保留发给 Claude Fable 的提示与输出 30 天，保持开启即代表工作区接受这个保留期
+
+分组开关随页面其他设置一起在按 **Save** 时保存。目录分组授权无法把整组关闭的模型重新给回来。
+
+## 默认策略
+
+大多数模型默认启用。在 **Default Policy** 标签关掉不想让成员用的模型并 **Save**。用于授权的安全工作模型默认关闭，可以在 Default Policy 里对所有人打开，或在 **Group Access** 里授权给某个分组。
+
+成员无法在选择器或 CLI 里选到被关闭的模型，Amp 也拒绝在该模型上运行线程。正在使用该模型的线程在下一条消息时停止，CLI 显示 "Model Not Available" 并给出模型列表链接。
+
+## 锁定的模型
+
+有些模型不能关闭，因为 Amp 正在使用它们，这样本页的改动永远不会弄坏新线程：工作区新线程的起始模型，以及 Puck 和 Spaces agent 使用的模型。页面会在 **Used by Amp** 下列出它们及用途。
+
+要关闭锁定的模型，先去工作区设置的 **Model Selector**：给新线程换一个 **New Threads Start On**（Staff Pick / Last Choice / Auto 会回落，所以请选固定模型），或给 Puck / Spaces 换模型，然后回到 Allowed Models。禁用之后才成为起始模型的，仍保持禁用，成员无法在其上开线程，直到你换掉起始模型。给 Puck / Spaces 选模型时，被禁用或整组关闭的模型会灰显并标注 "Disabled"。
+
+## 分组访问
+
+工作区启用目录同步（WorkOS SCIM）后，**Group Access** 标签会列出身分提供方的分组。可以给某个分组的成员开通其他人被禁用的模型：点 **Choose Models**、选择模型并保存。
+
+授权只做加法：属于多个分组的成员拥有任一分组授予的全部模型。对所有人启用某模型时，它的授权会被移除。分组在 IdP 里被删除后，其授权会出现在 "Groups No Longer in Your Directory"，可在那里移除。
+
+## 插件决策调用
+
+**TypeSafe** 下的 **Jev** 开关控制插件对 `amp.ai.decide(...)` 及单问题辅助函数的调用（含默认使用 Jev 的调用）。想只给某个目录分组用，就在 Default Policy 关掉它，再在 Group Access 授权给该组并保存。
+
+这不影响 Amp 内部对 Jev 的使用（比如给 diff 里的文件排序）。Jev 不能运行 agent，也不出现在模型选择器里。被策略拒绝的插件决策调用会直接失败，不会改用 OpenAI，见[决策模型](/customization/decision-models)。
+
+## 置顶模型与个人固定
+
+工作区的 **Top Models**，以及成员在选择器设置里固定在其下的模型，可能包含被禁用的模型。选择器会忽略它，成员也不能在其上开线程；固定项会保留，等你以后启用该模型时重新生效。

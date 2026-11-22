@@ -1,0 +1,88 @@
+---
+title: GitHub 与 Git
+description: orb 如何克隆、提交、推送与签名，以及 webhook 订阅。
+sidebar:
+  order: 1
+  group:
+    label: 集成
+---
+
+Amp 用 Git 把代码带进 [orb](/orbs)，再把 agent 的改动带出来。GitHub 仓库通过 GitHub App 以你的身份登录：agent 能克隆私有仓库、推分支、开 PR、读 CI 状态，而你不需要创建或粘贴任何令牌。
+
+orb 也支持 **GitLab、Bitbucket 等 HTTPS Git 主机**，用它们不需要连 GitHub。GitLab 有独立集成，见 [GitLab](/integrations/gitlab)。
+
+## 连接 GitHub
+
+打开 **Settings → Integrations & MCP**，点 **Connect GitHub**。GitHub 会走两步：
+
+1. **授权 Amp** — 把你的 GitHub 账号与 Amp 账号关联，Amp 据此以你的身份访问 GitHub
+2. **安装 Amp 应用** — 选择仓库所有者，再选 **All repositories** 或 **Only select repositories**；Amp 只能访问你在这里选中的仓库，而且必须你的账号本身也有权限
+
+应用已由同事装好时第二步会跳过；组织要求审批第三方应用时，需要组织所有者先批准。
+
+连接后卡片会列出已连接的账号及其可读的账号/组织与仓库范围：
+
+- **Choose Repositories** — 打开 GitHub 的仓库选择器（含把 Amp 装到另一个组织）
+- **Connect Another** — 再连一个账号（比如工作账号）
+- **Reconnect** — 连接过期或被撤销时重新登录，仓库选择保持不变
+- **Disconnect** — 删除 Amp 持有的该账号令牌，但不会卸载 GitHub 上的应用；卸载要到 GitHub 应用设置里做
+
+## 连接用来做什么
+
+- **创建项目** — New Project 对话框列出连接可访问的仓库
+- **克隆进 orb** — 新 orb 启动前 Amp 检查权限，然后克隆
+- **推送与 PR** — orb 里的 `git push` 和 `gh` 以你的身份运行，推送、分支、PR 都记在你账号下（除非项目设为"以 Amp 身份操作"）
+- **线程里的提交/PR/CI 详情** — agent 提到提交或 PR 时，线程会显示状态预览；Puck 也用同一连接查 CI
+
+公开仓库不连也能克隆，其它都需要连接。**Amp 只有在应用安装到仓库所有者且安装范围包含该仓库时才能写入**，即使你的账号是仓库管理员也一样。
+
+PR 描述里有 `Amp-Thread-ID:` 加线程 URL 或 `T-…` ID 时，线程标题栏会列出该 PR 及其状态（open、draft、queued、merged、closed；queued 表示在合并队列里）。Amp 在 PR 打开或编辑时读取描述，所以之后补也行。想让每个 PR 都带，就在 [`AGENTS.md`](/customization/agents-md) 里加一条"在 PR 描述里加 `Amp-Thread-ID: <线程 URL>`"。
+
+## 以 Amp 身份操作 GitHub
+
+默认 orb 以发起线程的人的身份推送、开 PR、评论。项目可以改为使用 Amp GitHub App 的机器人账号：PR 由 Amp 发出，提需求的人就能自己审阅批准。
+
+在 **GitHub Identity** 里选择：
+
+- **个人或工作区默认值** — Settings → Projects 或工作区设置的 Projects 里选 **Amp** 或 **Thread Creator**；只有工作区管理员能改工作区默认值，点 **Overridden by** 可看自行覆盖的项目
+- **按项目** — 项目设置里选 **Amp**、**Thread Creator** 或 **Default**
+
+以 Amp 身份操作时，机器人只用于该项目的 GitHub 仓库（含附加仓库），且仅限线程创建者本来有推送权限的地方；机器人永远不能写到创建者写不了的地方。权限撤销后最多 10 分钟传到运行中的 orb。分支保护规则对机器人同样生效。提交作者是另一回事：想让 Amp 也是作者，把 **Commit Identity** 设为 **Amp**。
+
+## 提交身份与签名
+
+- **Commit Identity** 决定提交作者是线程创建者还是 Amp
+- **Signed Commits** 可以让 orb 里的提交使用你的签名密钥（或 Amp 的），满足要求签名提交的分支保护
+
+## 工作区控制
+
+工作区管理员可以在工作区设置里限制成员连 GitHub、要求特定身份或禁止个人连接。
+
+## 用自己的 GitHub App
+
+组织可以改用自己拥有的 GitHub App：
+
+1. 在 GitHub 创建 App，回调地址与权限按 Amp 的说明填写
+2. 把 App ID、私钥、webhook secret 填入工作区设置
+3. 在 GitHub 安装到需要的仓库
+
+与 Amp 官方应用的区别：由你控制应用权限与审计；但 Amp 的部分功能（如某些 webhook 事件）需要相应的权限才能工作。
+
+## 其它 Git 主机
+
+GitLab、Bitbucket 及其它 HTTPS 主机都支持，用 HTTPS 克隆地址即可；私有仓库需要写权限的凭据（GitLab 建议用它的集成，`glab` 会随连接登录）。**Ship** 与 **Push to Branch** 走 Git 可用，但 GitHub 的 PR 与 CI 集成不适用于这些主机，需要时把 Ship 改成自定义提示（用 `glab` 或对应 CLI/API 开 MR/PR）。区别详见[其它 Git 主机](#其它-git-主机)。
+
+## GitHub webhook
+
+给项目里的 orb 订阅 GitHub 事件，事件到来时唤醒 orb：
+
+- **Follow an Issue or Pull Request** — 订阅某个 issue/PR 的评论与状态变化
+- **Create an Orb Spawner** — 每个新 issue 或指定标签自动开一个 orb
+- **Follow CI** — 跟踪某次推送的 CI 结果，失败了让 agent 去修
+- **Automatic Follow-Ups** — 在 CI 完成、PR 评论等时机自动继续线程
+
+在 GitHub 卡片的 **Webhooks** 区域管理订阅与投递记录，可以随时停止订阅。事件通过 Amp 的 webhook 端点投递给拥有该订阅的线程，细节见[自动化与 Webhook](/orbs/automations)。
+
+## 排查
+
+连接失败或推不上去时依次检查：GitHub 卡片的连接状态是否过期、Amp 应用是否安装在仓库所有者且包含该仓库、组织是否要求审批、分支保护是否允许机器人/你的账号推送。CI 状态读不到时，确认应用对仓库有 Checks 读权限。

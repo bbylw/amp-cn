@@ -1,0 +1,50 @@
+---
+title: 出站 IP
+description: Amp 服务器连接你控制的服务时使用的地址。
+sidebar:
+  order: 1
+  group:
+    label: 参考
+---
+
+Amp 的服务器会连到你运行或控制的一些服务。如果这些服务只接受已知 IP，就把下面的地址加进白名单。
+
+## 服务器 IP
+
+Amp 服务器使用的 IPv4 地址：
+
+```text
+34.27.63.54
+35.194.5.71
+35.192.100.192
+34.61.145.182
+34.46.222.39
+34.136.50.179
+34.122.195.118
+34.10.59.143
+136.113.83.135
+34.121.168.15
+34.31.146.103
+35.254.58.39
+34.132.205.130
+34.9.76.20
+34.42.36.229
+23.236.56.82
+```
+
+同一份清单也放在 [server.txt](https://ampcode.com/docs/egress-ips/server.txt)，每行一个地址，方便脚本抓取。
+
+## 什么时候需要
+
+Amp 服务器连到某个按 IP 限制访问的服务时，需要在那边放行这些地址：
+
+- **模型路由** — 推理跑在 Amp 服务器上，所以经你的[模型路由](/customization/model-routing)连接发出的请求来自这些地址，包括 Amazon Bedrock、Google Cloud、Microsoft Foundry 和自定义 URL 连接（例如带 `aws:SourceIp` 条件的 IAM 策略）。**Check Access** 也从这些地址连
+- **私有或内部的远程 MCP 服务器** — Amp 服务器连接保存在 ampcode.com 上的远程 MCP 定义
+- **自管理的 GitLab 实例** — Amp 服务器调用它的 API 做检查、绑定账号、刷新 OAuth、安装 Push Updates webhook 和订阅，见 [GitLab](/integrations/gitlab)
+
+## 什么时候不需要
+
+这些连接**不**来自上述地址：
+
+- **Orbs** — orb 里的命令（如 `git clone`）从 orb 宿主机的地址出去，而且会变。要让 orb 访问只允许已知地址的服务，用 [Tailscale](/orbs/customizing) 把 orb 接进你的网络
+- **自托管 orbs 与 runners** — 它们主动连 Amp，Amp 从不连进你的网络

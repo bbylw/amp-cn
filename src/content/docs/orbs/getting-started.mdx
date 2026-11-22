@@ -1,0 +1,81 @@
+---
+title: 第一个 Orb 线程
+description: 登录、建项目、发提示，五步跑通第一个 orb。
+sidebar:
+  order: 2
+  group:
+    label: Orbs
+---
+
+Orb 是 Amp 为线程创建的远端机器：里面有你的代码、工具和完整开发环境，agent 在那里干活而不是在你的电脑上。这一页带你跑通第一个 orb 线程。
+
+## 1. 登录
+
+在 [ampcode.com](https://ampcode.com) 注册或登录。orb 跑在 Amp 云端，什么都不用装。
+
+想用原生应用，就把 [Amp 应用](/apps) 装到 macOS、Windows、Linux、iOS 或 Android 上，用同一个账号登录。
+
+代码在私有 GitHub 仓库里的话，先到[集成设置](https://ampcode.com/settings/integrations)连上 GitHub。Amp 用它把仓库克隆进 orb，并以你的身份推送，细节见 [GitHub 与 Git](/integrations/github)。
+
+## 2. 创建项目
+
+项目把仓库和 Amp 连起来：它告诉 Amp 该克隆哪个仓库，并保存这个仓库所有 orb 共用的设置，比如密钥和 orb 规格。
+
+打开 [Projects](https://ampcode.com/projects)，点 **New Project**，然后选代码来源：
+
+- **Use an Existing Repository** — 从 GitHub 或 GitLab 连接里挑仓库，也可以粘贴 Bitbucket 等 Git 主机的 HTTPS 克隆地址。公开仓库不需要凭据；其它主机的私有仓库需要克隆凭据。
+- **Start From Scratch** — Amp 帮你创建并托管一个空仓库。
+
+再选所有者：工作区项目对同事可见，私有项目只有你能看到。工作跨多个仓库时点 **Add Additional Repositories**，之后也能在项目设置里改。
+
+代码不需要进 orb 就跳过这步：新建线程时选 **No Project**，得到一个不带仓库的干净 orb，适合调研、一次性脚本，或者从附件文件开始的工作。
+
+:::tip
+GitLab、Bitbucket 等 HTTPS Git 主机都支持，不需要连 GitHub，也不用迁仓库。GitLab 在设置里[连接 GitLab](/integrations/gitlab) 后即可克隆和推送，`glab` 也已是登录状态；其它主机配一下 [Git 凭据](/orbs/customizing#配置-git) 即可。
+:::
+
+## 3. 发提示
+
+打开 [ampcode.com](https://ampcode.com) 或应用，点 **New Thread**。输入框会显示线程在哪里跑、用哪个项目、跑在哪个[模型](/models)上。确认执行位置是 **New Orb**，并选好项目。
+
+然后描述你想要的结果。可以要求一个完整的结果：agent 有一整台机器，能先把应用跑起来、验证改动，再回报给你。
+
+```text
+给设置页加一个深色模式开关，跟随系统偏好。
+跑测试，并给我开关打开和关闭时的截图。
+```
+
+按 Enter 发送。Amp 创建 orb、克隆仓库、启动 agent。第一个 orb 会慢一点，之后同项目的线程复用快照、启动更快。agent 干活时，线程旁的面板会显示改动、portal、文件和 orb 里的终端。
+
+此时你可以合上笔记本。agent 继续工作，干完 orb 自动休眠；下次发消息时它带着文件和运行中的服务被唤醒。装了 [Amp 应用](/apps)，线程等你回话时会收到通知，手机上看结果、直接回复。
+
+## 4. 为 Orb 准备仓库（可选）
+
+项目里的第一个线程从普通 orb 开始。agent 可以边干边装，但每个新 orb 都要重来一遍。加两个脚本即可避免：
+
+- `.agents/setup` — 安装依赖和工具。Amp 在准备新 orb 时运行一次，把结果存成快照供后续线程使用。
+- `.agents/resume` — 每次唤醒后运行，做刷新登录、重启服务这类快事。
+
+最快的办法是让 Amp 自己加。项目里的第一个 orb 线程会在消息上方显示 **Enable Orb Caching** 卡片，点 **Set Up** 就在该线程里发出请求；也可以在项目页的 **Set Up Orbs** 提示里点 **Set Up with Amp** 新开线程。
+
+两种方式都会让 agent 按内置的 `orb-setup` 技能写脚本、在 orb 里跑通、然后提交。你也可以自己说：
+
+```text
+把这个仓库准备好，让 Amp 能在全新的 orb 里工作。创建 .agents/setup 和 .agents/resume，
+在本 orb 里分别运行验证，然后带上可执行位提交。
+```
+
+新文件会出现在 **Changes** 面板里，供你审阅。之后 Amp 在准备项目快照时运行 `.agents/setup`，这个项目的每个新 orb 都从准备好的状态开始。
+
+项目设置里还有几项对所有 orb 生效：**Secrets & Env Vars**（密钥，个人值覆盖项目值，见[密钥管理](/orbs/secrets)）、**Orb**（默认规格，见[规格与计费](/orbs/sizes)）、以及提交到仓库的 `.amp/services.yaml`（声明要启动的 dev server，见 [Portals](/orbs/portals)）。
+
+## 5. 继续探索
+
+- [定制 Orbs](/orbs/customizing) — 生命周期、setup 与 resume 脚本、安装软件
+- [为 Orbs 优化代码库](/orbs/optimizing) — 让 agent 不必猜就能启动、运行、登录、测试、交付
+- [Portals](/orbs/portals) — 打开 orb 里的 web 服务，把评论直接发给 agent
+- [Multiplayer](/collaborate/multiplayer) — 同事加入同一线程、同一个 orb
+- [Agent to Agent](/orbs/agent-to-agent) — agent 启动其它 agent 并取回结果
+- [自动化](/orbs/automations) — 定时或用 webhook 唤醒 orb 里的线程
+
+也可以不开浏览器：用 [Amp 应用](/apps)，在 CLI 里运行 `amp -ox "你的提示"`，或在 TUI 命令面板里选 `thread: new in orb`。

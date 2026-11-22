@@ -1,0 +1,115 @@
+---
+title: 交付改动
+description: 选择 agent 如何把改动落到仓库，并定制 Ship 提示。
+sidebar:
+  order: 5
+  group:
+    label: Orbs
+---
+
+agent 在 orb 里干完活，改动会出现在线程的 **Changes** 面板。面板上的主按钮默认叫 **Ship**，按下后 Amp 会给 agent 发一条提示，告诉它怎么把这些改动放进仓库。你可以先审文件，准备好再按。
+
+默认走主干开发（trunk-based）：只有一条共享分支，改动直接落在上面。agent 提交未提交的改动、变基到最新基线、跑测试，然后直接推到基线分支。如果别人先落了改动，agent 会在 orb 里解决冲突再推一次。
+
+团队有别的流程时，可以改 **Ship** 按钮的行为。项目设置里这一项叫 **Ship Behavior**，三个选项，第三个允许你完全自己写提示。
+
+GitLab、Bitbucket 等 HTTPS Git 主机同样支持 Ship 与 Push to Branch。GitLab 连好后 orb 以你的身份推送；其它主机需要先配好有写权限的 [Git 凭据](/orbs/customizing)。只有在想要不同步骤时才需要 **Custom Ship**，例如用 `glab` 开一个 GitLab merge request（已预装且登录），或用厂商 CLI/API 开 Bitbucket PR——默认那条 GitHub PR 说明对其它主机不适用。
+
+## Restack 整理提交
+
+交付前用 restack 把一大堆改动或 agent 的中间提交整理成干净的提交序列。orb 线程和接了 [runner](/cli/runners) 的线程都能用。
+
+1. 打开线程的 **Changes** 面板
+2. 点 **Restack**，等 agent 整理完
+3. 用面板底部的提交选择器逐个看 diff
+
+它整理的是自分叉点（merge base）以来已提交和未提交的改动，重写本地提交历史但保持最终文件内容不变，**不会**推送。
+
+## 默认 Ship 流程
+
+按默认的 **Ship**，按钮发出去的提示会让 agent：
+
+1. 提交所有未提交的改动
+2. 抓取 `origin`，变基到最新基线（通常是 `origin/main`）
+3. 跑全量测试
+4. 推到基线分支
+5. 若因基线前进而推送失败，再次变基、解决冲突、重推
+
+Ship 不会关线程。改动落地、agent 停下后，输入框上方会出现 **Archive**（前提是 Ship 之后你没再发消息）。之后的追问结束时，只要没有新工作要交付，Archive 会再次出现。不落代码的线程（评审、调研、排查）在结果交付后也提供 Archive。同一线程可以反复 Ship。
+
+变基产生实质冲突时，agent 会解决并先跟你确认再继续。只有当它确认同一个测试在基线分支上不加本线程改动也失败时，才会忽略这个失败。
+
+基线通常是仓库的默认分支。发送前的确认框会显示确切目标。
+
+## Ship 行为
+
+打开项目 → **Settings** → **Overview** 标签里的 **Ship Behavior**：
+
+- **Ship** — 默认流程，提交并推到基线分支
+- **Push to Branch** — 提交并推到一个特性分支；线程本来就在基线上时，先创建一个名字简短的分支。GitHub 仓库推送后还会拿到 PR 链接并告诉你。按钮变成 **Push**
+- **Custom Ship** — 发送你写的提示。团队有自己的流程（PR 模板、合并队列、发布脚本、非 GitHub 主机）时用它
+
+设置对整个项目的线程生效。工作区项目由项目创建者或工作区管理员修改，私有项目只有所有者能改。
+
+## 写自定义 Ship 提示
+
+自定义提示就是一段纯文本。有人按 **Ship** 时，Amp 把它当作你在线程里输入的消息发给 agent，agent 用 orb 里的工具（`git`、`gh`、`.agents/setup` 装的东西）执行。文本原样发送，**没有模板变量**，所以分支名和命令都要写清楚。不能为空，最长 10,000 字符。
+
+在项目设置的 **Overview** → **Ship Behavior** 里选 **Custom Ship**，弹出的 **Customize Ship Prompt** 默认填好默认提示，改完点 **Use Custom Ship**，再点区块底部的 **Save**（对话框只改表单，不保存就等于没改）。想让新项目默认如此，就到 **Settings → Projects** 改默认值；点 **Ship Behavior** 旁的 **Overridden by** 能看到自行设置过的项目。
+
+CLI 里把提示写进文件：
+
+```bash
+amp projects update acme/widgets \
+  --ship-behavior custom \
+  --custom-ship-prompt-file ./ship.md
+```
+
+用 `-` 从标准输入读，`amp projects create` 也接受同样的参数。把提示文件放进仓库（如 `.agents/ship.md`）就能像代码一样评审；改完要重跑一次 `amp projects update`，因为 Amp 存的是副本。
+
+写提示时按顺序列出步骤、点名命令，说明完成时回报什么、什么时候该停下来问你。适用于所有任务的仓库约定（提交信息格式、跑哪些测试）放进 [`AGENTS.md`](/customization/agents-md)，Ship 提示只描述交付步骤。
+
+需要 PR 模板和关联 issue 的团队：
+
+```text
+提交所有未提交的改动。如果还在 main 上，按这条线程的工作创建一个特性分支。
+抓取 origin 并变基到 origin/main，然后运行 pnpm test。
+推送分支并用 `gh pr create --fill --template .github/pull_request_template.md` 开 PR，
+模板每一节都要填。如果线程引用了 issue，在描述里加 "Closes #N"。
+回报 PR 链接。不要合并。
+```
+
+GitLab 团队：
+
+```text
+在新特性分支上提交所有未提交的改动并推送到 origin。
+然后运行 `glab mr create --fill --remove-source-branch --target-branch develop` 并回报 MR 链接。
+不要直接推 develop。
+```
+
+先跑发布脚本再落 main 的团队：
+
+```text
+提交所有未提交的改动。抓取 origin 并变基到 origin/main。
+运行 `./scripts/release-check` 并修掉报告的问题。跑全量测试。推到 origin/main。
+如果因为 main 前进被拒，变基后重推。任何会改变行为的冲突，先停下问我。
+完成后归档这条线程。
+```
+
+orb 没预装的工具在 `.agents/setup` 里装好，让每个 orb 都就绪。`gh` 已预装并用 GitHub 连接登录，`glab` 用 GitLab 连接登录。
+
+## 从 Puck 或别的线程 Ship
+
+让 [Puck](/workspace/puck) 交付某条线程，或一条线程交付另一条时，Amp 发的是那条线程 Ship 按钮同样的提示，按项目配置（含自定义提示）生成，不必重复交代。
+
+只有你点名时 agent 才会用提示模板。"提交、合并、推送"会按字面执行；说"ship"才会用 Ship 提示。想改全局默认文本（而不是按项目），在个人或工作区设置的 **Prompts** 页改内置的 `ship` 提示；项目的 **Custom Ship** / **Push to Branch** 仍然优先。
+
+## 切回默认
+
+把 **Ship Behavior** 改回 **Ship**，或者：
+
+```bash
+amp projects update acme/widgets --ship-behavior ship
+```
+
+自定义提示的文本会保留，之后切回 **Custom Ship** 不用重写。

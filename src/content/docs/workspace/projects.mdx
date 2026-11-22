@@ -1,0 +1,84 @@
+---
+title: 项目
+description: 一个代码库的主仓库、线程与共享设置。
+sidebar:
+  order: 6
+  group:
+    label: 工作区
+---
+
+项目是 Amp 保存一个代码库全部信息的地方：主仓库、在它上面工作的线程，以及该项目每个 [orb](/orbs) 共享的设置。项目还可以包含[附加仓库](#附加仓库)，每个 orb 会把它们克隆在主仓库旁边。在项目里开线程时，Amp 知道要克隆哪些仓库、提供哪些密钥、orb 多大、结果怎么交付。
+
+项目支持 GitLab、Bitbucket 等 HTTPS Git 主机，不只是 GitHub，用 orb 不需要把仓库搬到 GitHub。私有 GitLab 仓库先[连接 GitLab](/integrations/gitlab)，其它主机的私有仓库先配好 [Git 凭据](/orbs/customizing)。
+
+也可以不用项目：**No Project** 的线程拿到干净的 orb、没有仓库，适合调研或一次性脚本。要碰代码库就建一次项目，之后每条线程都直接可用。
+
+项目页显示最近的提交、在仓库上工作过的线程与文件浏览。页头可以克隆仓库、打开项目设置、新建线程。
+
+## 创建项目
+
+打开 Projects 点 **New Project**，选择代码来源与归属。
+
+### 仓库来源
+
+- **GitHub** — 在集成设置里连 GitHub 后选仓库；Amp 用该连接克隆私有仓库并以你的身份推送。公开仓库不连也能用
+- **GitLab** — 连接后选项目，或粘贴 HTTPS 克隆地址（gitlab.com 或自管理实例）
+- **Bitbucket 或其它 Git 主机** — 粘贴 HTTPS 克隆地址，如 `https://bitbucket.org/acme/widgets.git`；公开仓库无需凭据，私有仓库建好项目后先在 **Secrets & Env Vars** 添加凭据
+- **Amp** — 选 **Start From Scratch**，Amp 为你创建并托管一个空仓库，用 `amp clone owner/project-name` 克隆到本机
+
+CLI 也能建两种项目：
+
+```bash
+amp projects create acme/widgets
+amp projects create https://git.example.com/acme/widgets
+amp projects create --amp-hosted --name widgets
+```
+
+把只存在本机的仓库搬进 Amp 托管项目：在目录里运行 `--push`，Amp 会创建项目、把克隆地址加为 `origin`（用 `--remote <name>` 换名字）并推送当前分支；项目名默认取目录名。
+
+```bash
+cd myproject
+amp projects create --push
+```
+
+之后 `git push` / `git pull` 直接对 Amp 托管仓库说话，orb 从你推送的内容起步。
+
+有工作区时默认在工作区里创建项目，用 `--personal` 或 `--workspace` 指定归属。
+
+### 归属
+
+项目属于你或工作区。工作区项目对每位成员可见，成员可以在其中开线程；私有项目只有你能看。私有项目以后可以在项目设置里用 **Change Owner** 移进工作区，反过来不行。
+
+## 线程与项目
+
+每条线程最多属于一个项目，项目页会列出它们。Amp 在线程启动时确定项目：
+
+- **网页** — 输入框在执行器旁显示当前项目，点它换项目、选 **No Project** 或新建
+- **CLI** — `amp -ox` 看当前目录的 Git remote 匹配仓库 URL；匹配到多个时用 `--project`
+- **agent 之间** — 一个 agent 启动另一个时（[agent-to-agent](/orbs/agent-to-agent)）会指定新线程的项目，从而把工作交给另一个仓库
+
+如果仓库有多个可访问 URL（镜像、SSH remote），在项目设置的 **Git Remote Aliases** 里补上，CLI 就能匹配。
+
+## 附加仓库
+
+项目可以带多个附加仓库，每个 orb 都会克隆它们，方便 monorepo 或跨仓库改动。CLI 里重复传 `--repo` 设置附加仓库；网页在项目设置的 **Repositories** 里增删。每个附加仓库同样受 Git 凭据约束。
+
+## 项目设置
+
+- **Overview** — 名称、描述、图标、可见性
+- **Repositories** — 主仓库与附加仓库、Git Remote Aliases
+- **Setup scripts** — `.agents/setup` / `.agents/resume` 的说明与入口，见[定制 orb](/orbs/customizing)
+- **Secrets & Env Vars** — 每个 orb 都会拿到的密钥与环境变量，个人值覆盖项目值，项目值覆盖工作区值
+- **Orb size** — 该项目默认的 orb 规格，可在启动时用 `--orb-size` 覆盖
+- **Ship** — 默认的交付方式（Push to Branch、Open PR、Merge PR 或自定义提示），见[交付改动](/orbs/shipping)
+- **Feedback Widget** — 给线上站点启用评论组件，见[反馈组件](/workspace/feedback-widget)
+- **GitHub Identity** — 以你的身份还是以 Amp 身份推送与开 PR
+- **Delete project** — 删除项目不影响仓库与已有线程
+
+## 项目与工作区
+
+工作区项目共享给全员，因此它的 setup 脚本与密钥对每位成员的 orb 生效。想把实验留在自己这里，就用私有项目；成熟后再移交工作区。
+
+## 克隆到本机
+
+在项目页头点 **Clone** 会给出命令；Amp 托管仓库用 `amp clone owner/project-name`。详见 [amp clone](/cli/clone)。

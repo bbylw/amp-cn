@@ -1,0 +1,64 @@
+---
+title: Spaces
+description: 在一个项目里和团队一起规划、分派工作，由 Amp 并行开工。
+sidebar:
+  order: 5
+  group:
+    label: 工作区
+---
+
+Space 是团队规划与指挥工作的场所，通常对应一个 Amp [项目](/workspace)。你在 Space 里和 Amp 对话，Amp 拆出多个线程并行干活，每条线程以实时卡片出现在对话里，谁在做什么一目了然。
+
+## 创建 Space
+
+点侧边栏 Spaces 区域的 **New Space**，填写：
+
+- **Name** — 显示在侧边栏和 Space 顶部
+- **Goal**（可选）— 这批工作为了什么，Amp 会让线程朝着它推进
+- **Project**（可选）— 线程运行的项目；不需要仓库的（调研、规划）选 **No Project**
+- **Space Model**（可选）— Space 自身使用的模型，不填则用你的 Spaces 模型
+- **Thread Model**（可选）— Space 启动的每条线程使用的模型
+- **Shared with** — 工作区里谁可以看、可以聊
+- **Slack Channels**（可选）— 哪些频道的 `@Amp` 请求交给这个 Space
+
+这些都可在之后修改：共享范围在 **⋯ → Manage Sharing…**，其余在 Edit Space。
+
+CLI 创建：
+
+```bash
+amp spaces create "Checkout v2" --project acme/web --goal "Get checkout under 2 seconds" --shared-with workspace
+```
+
+`--project`、`--goal`、`--shared-with`（`workspace` 或 `only-me`）都可选。`--json` 会给出 Space ID。想从 CLI 在 Space 里开线程，在执行模式命令上加 `--space`（Space 的 URL 或 ID）：
+
+```bash
+amp -ox --project acme/web --space T-… "Fix the coupon rounding bug"
+```
+
+新线程创建后立刻加入 Space，规则同"拉入已有线程"：你要么是 Space 所有者，要么 Space 以 multiplayer 共享给你，且线程的共享范围至少与 Space 一样广。`amp threads continue <thread> -x --space …` 则把已有线程加进去。
+
+Space 所有者可以在 Edit Space 里把它移到别的项目或 No Project。列表会显示该工作区的项目，以及 Space 未共享给任何人时你的个人项目。改动之后启动的线程用新项目，已启动的保持原样。
+
+## 没有项目的 Space
+
+无项目的 Space 属于当前工作区。Amp 为它启动线程时，线程跑在没有仓库的 orb 里，并按 Space 的方式共享。你说"在 acme/web 修登录 bug"时，那条线程会开在你点名的项目里。
+
+相关差异：没有仓库的线程没什么可 **Ship** 的，干完就归档；**进度**按线程自己的提交统计；项目的 Space 指令只作用于该项目的 Space，无项目的 Space 用工作区的 Puck 指令。
+
+## 在 Space 里工作
+
+- **在对话里提需求** — 发请求、bug 或想法。Amp 回答，或为每件事开线程并以卡片展示实时状态、是否需要人
+- **打开线程** — 点卡片在对话旁打开，看结果、试用、继续迭代、交付
+- **从 Slack 提** — 在 New/Edit Space 里关联 Slack 频道，之后被 @ 的请求进入 Space 并由它开线程（其它消息、机器人帖不会进来）。只有共享给整个工作区的 Space 能关联频道，且只限 Amp 所在的 public 频道
+- **拉入已有线程** — 让 Space 加，或从侧边栏拖进 Space；移出同理。你自己的线程都可以加入/离开，包括别人替你启动的，侧边栏里嵌套在其下的线程会一起移动。Space 不能塞进另一个 Space
+- **和团队讨论** — 被共享的同事在同一对话里发言、影响工作。对某条消息评论是人与人之间的讨论，除非有人在评论里 @amp，Amp 不会读
+
+想说话而不是打字，就开 Space 的 [Huddle](/collaborate/huddle)。
+
+## 共享与限制
+
+只要共享对象里有 Contributor，Space 的 [multiplayer](/collaborate/multiplayer) 就是打开的。在 **⋯ → Manage Sharing…** 里改可见范围：可以共享给工作区、分组或个人，但**不能**用"拿到链接即可访问"。
+
+每个人要么是 **Contributor**（可以发言），要么是 **Viewer**（可读对话、线程与 artifact，不能发言）。Viewer 可以在输入框位置点 **Request to Contribute** 申请，你从 @ 提醒或 Slack 里批准，或在共享对话框里改角色。
+
+Space 里每条线程都继承 Space 的共享设置（同一批人、分组、角色）。要改可见范围就改 Space；线程自己的共享对话框只是展示。

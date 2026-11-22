@@ -1,0 +1,67 @@
+---
+title: macOS 卫星机
+description: 任务需要 macOS 时，由 orb 临时拉起一台云端 Mac。
+sidebar:
+  order: 8
+  group:
+    label: Orbs
+---
+
+macOS 卫星机是云端的 Mac，orb 在任务需要 macOS 时临时启动它。让 Amp 改你的 iOS 或 Mac 应用，它会在 orb 旁边那台 Mac 上构建、测试、运行，然后把结果给你看。
+
+:::note
+macOS 卫星机处于 beta，需要先在实验特性设置里加入等待名单。
+:::
+
+## 怎么工作
+
+线程仍然跑在它的 Linux orb 上，旁边是你的 dev server 和整套工具链。需要 macOS 时，Amp 启动一台全新的 Mac，装好 Xcode、iOS 模拟器和 Homebrew，大约 30 秒就绪。
+
+代码始终在 orb 上编辑。每次在 Mac 上执行命令前，orb 会把改动同步过去，所以 Mac 上总是最新代码；被 Git 忽略的文件（比如本地 `.env`）留在 orb 上。截图、日志和构建输出回到线程。应用需要连 orb 上的后端（比如你的 dev server）时，Amp 会一并连好。
+
+不需要专门要一台 Mac，直接说要做的事：
+
+```text
+给设置页加一个深色模式开关，在 iOS 模拟器里跑起来，给我截图。
+```
+
+## 看和操作这台 Mac
+
+线程的 **Mac** 标签（在 **Desktop** 旁边）显示 Mac 的屏幕。你可以看 Amp 干活，也可以直接在 Mac 上点按输入、自己试应用。没有 Mac 在跑时，该标签里有个按钮让 Amp 启动一台。
+
+## Xcode 与模拟器版本
+
+每台 Mac 从一个 macOS 镜像启动，镜像决定 Xcode 和模拟器版本：
+
+| 镜像 | Xcode | 模拟器 |
+| --- | --- | --- |
+| `macos-27` | 26.6 与 27.0–27.2（默认 27.2） | iOS 27.0–27.2 |
+| `macos-26` | 16.4 与 26.0–26.3（默认 26.1.1） | iOS 17.5、18.6、26.0–26.2 |
+| `macos-15` | 15.4 与 16.0–16.4（默认 16.0） | iOS 15.5–18.6 |
+
+默认 `macos-27`。可在项目 **Settings → Satellites** 里给项目指定 **Mac Image**；项目通过 `.xcode-version` 钉了 Xcode 版本时，Amp 也会自动挑匹配的镜像。
+
+Mac 是不支持嵌套虚拟化的虚拟机，跑不了 Android 模拟器。Android 请用带模拟器或真机的 [runner](/cli/runners)。
+
+## 代码签名
+
+要做签名构建或上传 TestFlight，在 **Settings → Integrations → App Store Connect** 里连一个 App Store Connect API key。Amp 在装到 Mac 前会询问；关掉 **Ask Before Installing on a Mac** 就不再问。Mac 停止时签名凭据会被删除。
+
+也可以在 orb 的环境变量里设 `ASC_KEY_ID`、`ASC_ISSUER_ID` 和 `ASC_PRIVATE_KEY_B64`（或 `ASC_PRIVATE_KEY`）。三者都非空时 Amp 直接使用，不再询问。
+
+## 规格与价格
+
+| 规格 | CPU | 内存 | 价格 |
+| --- | --- | --- | --- |
+| `mac.medium` | 6 | 14 GB | $2/小时 |
+| `mac.large` | 12 | 28 GB | $4/小时 |
+
+默认 `mac.medium`。在 **Settings → Experimental Features → Mac Satellites** 里可以关掉 `mac.medium` 以总是拿 `mac.large`，或整体关闭。
+
+只在 Mac 运行时计费，而 Mac 只在 Amp 需要时运行：Amp 最后一次使用后会保留 20 分钟，方便后续消息复用同一台 Mac 及其构建缓存；长构建和打开着 **Mac** 标签也算使用。空闲 20 分钟后 Mac 连同上面的内容一起删除；归档线程、orb 休眠或你要求停止时会立即停止。
+
+Mac 时长从套餐包含的 orb 用量里扣（费率高于 orb 时长），之后从 Amp 积分扣。和 orb 一样，没有剩余用量或积分时不会启动 Mac。用量与花费看 **Settings → Usage → Satellites**。
+
+## 获取访问权限
+
+加入等待名单：**Settings → Experimental Features → Mac Satellites → Join Waitlist**，开通后会发邮件通知。想更快，可以每天点一次 **Move Me Up**，点得天数多的人排前面。

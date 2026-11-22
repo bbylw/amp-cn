@@ -1,0 +1,34 @@
+---
+title: MCP Registry 白名单
+description: 只允许工作区成员使用经过批准的 MCP 服务器。
+sidebar:
+  order: 2
+  group:
+    label: 企业版
+---
+
+企业版工作区管理员可以强制一个 MCP registry，只有 registry 里列出的 MCP 服务器才对成员可用。个人、工作区和项目的 MCP 服务器设置页会隐藏未列出的服务器。registry 的协议与 schema 见 [registry.modelcontextprotocol.io](https://registry.modelcontextprotocol.io/docs#/operations/list-servers-v0.1)。
+
+## 在哪里检查
+
+启动 MCP 服务器的机器负责比对 registry：
+
+- **远程 MCP 服务器**（含用 OAuth 登录的）由 ampcode.com 检查
+- **本地 MCP 服务器**由启动它的 CLI 或 runner 检查；orb 线程里由 orb 检查
+
+机器连不上 registry 时，它要启动的每个 MCP 服务器都会被拦下。所以私有网络里的 registry 只能让该网络上的 CLI/runner 使用本地 MCP 服务器；远程服务器和 orb 线程要等 ampcode.com 与 orb 能访问 registry 后才可用。
+
+## 包匹配
+
+本地 stdio 服务器按包名和 registry 类型匹配，批准的是**包名**而不是版本：tag、固定版本、版本范围、Python extra 都算同一个包。
+
+支持用 `npx`、`npm exec`、`npm x`、`pnx`、`pnpx`、`pnpm dlx`、`bunx`、`bun x`、`yarn dlx` 运行的 npm 包，以及用 `uvx`、`uv tool run`、`pipx run` 运行的 Python 包。`uvx --from`、`pipx run --spec`、`npx --package` 这类"另起一个命令名"的来源选项会被拦（那可能是任意程序），直接运行被批准的包即可。
+
+以下也会被拦：不指向 registry 包的引用、已知会额外加包的 runner 选项（如 `uvx --with`）、替代 registry/index、shell 执行模式、npm 别名、直接 URL、版本控制源、压缩包、本地路径、解释器路径（`uvx --python ./python`，而 `--python 3.12` 允许）、包缓存目录，以及设置 `NODE_OPTIONS`、`PATH`、`HOME`、`npm_config_*`、`UV_*`、`PIP_*`、`PYTHON*` 这类会改变执行内容的环境变量的服务器。其余 runner 选项为兼容性放行。
+
+## 设置
+
+1. 打开**工作区设置**，找到 **MCP Registry**
+2. 填入 registry URL（`v0.1/servers` 端点）并保存
+
+**可选：只对特定用户生效** —— 把 **Apply To** 切到 **Specific users only**，填入工作区成员邮箱（每行一个或逗号分隔）并保存。这样只有这些人受 registry 限制，其他人不受影响。清空 URL 即取消 registry，允许所有 MCP 服务器。

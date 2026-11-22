@@ -1,0 +1,107 @@
+---
+title: 决策模型
+description: 插件用 amp.ai.decide 问类型化问题，拿概率而不是文本。
+sidebar:
+  order: 3
+  group:
+    label: 定制
+---
+
+决策模型回答关于某段状态的**类型化**问题：它不生成文本，所以没什么可解析——你得到的是一个选择、一个概率或一个分数，附带经过校准的概率，耗时远小于一秒。插件通过 `amp.ai.decide(...)` 及其单问题辅助函数提问。
+
+适合插件反复做的小判断：这安全吗、走哪条路径、有多紧急、这属于哪类工作。答案仍可能错，阈值和控制流由插件自己负责。需要推理或成段文字时，用 `amp.ai.ask(...)` 或 `amp.ai.generate(...)`，见[插件](/customization/plugins)。
+
+Amp 自己也用默认决策模型 Jev（TypeSafe 出品）做 diff 文件排序、建议线程标签这类工作。
+
+## 提问
+
+`amp.ai.decide(...)` 接收一个 `state` 和 1–20 个 `questions`，所有问题在同一轮往返中针对同一状态作答。问题名由你定，短一点更好，因为答案按同名返回并带类型。
+
+```ts
+import type { PluginAPI } from '@ampcode/plugin'
+
+export default function (amp: PluginAPI) {
+	amp.on('tool.call', async (event, ctx) => {
+		const command = amp.helpers.shellCommandFromToolCall(event)
+		if (!command) return { action: 'allow' }
+
+		const { answers, model } = await amp.ai.decide({
+			state: command.command,
+			questions: {
+				destructive: {
+					type: 'noul',
+					instructions: 'Does this shell command delete data or rewrite git history?',
+				},
+				scope: {
+					type: 'choice',
+					instructions: 'What does the command mostly touch?',
+					criteria: { files: null, git: null, network: null },
+				},
+			},
+		})
+
+		if (answers.destructive.noul > 0.9) {
+			return {
+				action: 'reject-and-continue',
+				message: `Blocked ${answers.scope.choice} command by ${model}`,
+			}
+		}
+		return { action: 'allow' }
+	})
+}
+```
+
+`state`、`instructions`、`criteria` 都可以给文本或 JSON。只放问题需要的事实——`state` 里的文本和不可信文本一样能影响答案。
+
+## 问题类型
+
+| 类型 | 问什么 | 返回 |
+| --- | --- | --- |
+| `noul` | 条件是否成立 | `noul`，0–1 的成立概率 |
+| `choice` | 哪个选项合适 | `choice`、各选项的 `probabilities`、`confidence` |
+| `score` | 落在有序刻度的哪一档 | `score`、概率加权档位、`legend`、`probabilities`、`confidence` |
+
+`noul` 可以用 `criteria` 的 `true`/`false` 描述成立与不成立的样子；`choice` 命名 2–20 个选项，每个选项给描述或 `null`；`score` 列 2–10 档，从低到高。
+
+单问题辅助函数直接返回答案：`amp.ai.noul(...)`、`amp.ai.choice(...)`、`amp.ai.score(...)`。
+
+```ts
+const { choice, confidence } = await amp.ai.choice({
+	state: event.message,
+	instructions: 'What kind of work did this turn mostly do?',
+	criteria: { bugfix: null, feature: null, docs: null, other: null },
+})
+
+if (choice !== 'other' && confidence > 0.7) {
+	await ctx.thread.addLabels([choice])
+}
+```
+
+调用经由当前线程执行；在线程绑定之外的处理里，请在同一个选项对象里传 `threadID`。
+
+## 选择模型
+
+省略 `model` 就是问 Jev。传 `model` 可改用另一个模型：
+
+| 模型 | 值 | 说明 |
+| --- | --- | --- |
+| TypeSafe Jev | `typesafe/jev` | 默认；Amp 请求 `jev-latest`，`result.model` 报告实际版本，如 `jev-1.13.0` |
+| OpenAI GPT-6 Luna | `openai/gpt-6-luna` | OpenAI Decisions API，按该线程其它 OpenAI 推理同样计费 |
+
+选择顺序：先用 Jev（阈值是为它调的）；工作区只允许 OpenAI，或你已在 Luna 上调好并验证阈值时再指定 Luna；每个决策只用一种模型（两者校准不同，阈值不通用），记录 `result.model` 以便更换时可见。
+
+**你指定的模型就是回答的模型**，不会回退到另一个：模型未配置，或被工作区[允许的模型](/enterprise/allowed-models)策略拒绝时，调用直接失败，也不会把状态发给任一提供方。企业版管理员可为工作区关闭 Jev 并通过 Group Access 授权给目录分组，这只影响插件决策调用（含省略 `model` 的调用），不影响 Amp 内部使用 Jev。可选决策请自己处理失败，明确地 open/close，而不是碰巧。
+
+改用 Luna 时有两个差异：`state`、`instructions`、`criteria` 里的 JSON 以 JSON 文本发送，`noul` 的 `true`/`false` 会追加到 instructions；任一问题被 OpenAI 拒绝时整个调用失败（Jev 则逐个作答）。
+
+## 限制
+
+| 部分 | 限制 |
+| --- | --- |
+| `state` | 50,000 字符 |
+| `instructions` 与每条 criteria | 各 10,000 字符 |
+| 每次调用的问题数 | 1–20，名字最长 100 字符 |
+| `choice` 选项 | 2–20 |
+| `score` 档位 | 2–10，从低到高 |
+
+超出限制会在到达模型前就校验失败。决策也不是保证：类型形状有保证，判断仍可能错，概率只有配合你选的阈值才有意义。让某个问题去卡流程之前，先用已知正确答案的状态（尤其阈值两侧）测一遍。

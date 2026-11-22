@@ -1,0 +1,120 @@
+---
+title: 自托管 orb
+description: 在你自己的基础设施上跑 orb，Amp 只负责调度。
+sidebar:
+  order: 15
+  group:
+    label: Orbs
+---
+
+你可以把 [orb](/orbs) 跑在自己的基础设施上：你出算力，Amp 把它变成 orb。
+
+只要你的算力能做到这几点——快速开新机器、同样快地休眠与唤醒、能长期保留、能缩到零——就能在自己基础设施里复刻 orb 的体验。
+
+自托管 orb 在 Hobby、Individual、Teams、Enterprise 所有方案都可用，不需要企业版；在 Hobby、Individual、Teams 上免费。一个人用也可以免费[建一个工作区](/collaborate/workspaces)。
+
+## 工作原理
+
+在你网络里的一台机器上运行 `amp orb provider`，它向 Amp 建立**出站**连接并等待 spawn、pause、delete 请求。只需要出站 HTTPS，Amp 从不连进来。
+
+拿到请求后，provider 会为每个任务运行一次你提供的 dispatch 程序：
+
+```bash
+amp orb provider ./dispatch.sh
+```
+
+你的 dispatch 程序接收 `spawn`、`pause`、`delete` 任务，在你的平台上创建、恢复、停止或删除机器/容器。`spawn` 时它要在 orb 里启动 `amp orb bootstrap`，该进程连回 Amp，好让 Amp 配置环境并运行 agent 的工具。
+
+- 成员在你的 provider 上创建线程 → Amp 发 `spawn`
+- 线程空闲或归档 → Amp 发 `pause`；下一条消息再发 `spawn` 恢复同一个 orb
+- 归档**不会**发 `delete`，所以归档线程的 orb 与磁盘仍留在你的平台上
+- 线程被删除等不再需要时 → Amp 发 `delete`
+
+`pause` 任务不说明是空闲还是归档；要区分就读 Amp API 的 `GET /api/v2/threads/{threadID}/metadata` 的 `archived` 字段。线程 ID 是 `T-` 加上 `ORB_ID` 中 `amp-` 之后的部分。
+
+## 谨慎
+
+不是所有算力都能变成 orb，也不是所有基础设施都能提供好的 orb 体验——这也是 Amp 托管的 orb 仍然体验最好的原因：暂停时它会保存磁盘与内存，所以唤醒后进程继续运行；新线程从项目快照起步，跳过 setup。
+
+例如在 Docker 上跑 orb 体验就不同：Docker 无法保存内存，所以 Docker 支撑的 orb 唤醒后，portal 后面的服务要等人打开 portal 才重新启动，终端会话与桌面应用也没了。
+
+各基础设施在暂停时保留什么：
+
+| 基础设施 | 内存 | 磁盘 | 项目快照 |
+| --- | --- | --- | --- |
+| Amp 托管 orb | 是 | 是 | 是 |
+| Docker | 否 | 是 | 同一主机上 |
+| Apple containers | 否 | 是 | 同一台 Mac，需 `container` 1.6.0+ |
+| Kubernetes（Helm chart） | 否 | 是 | 是 |
+| E2B | 是 | 是 | 示例中没有 |
+| Modal | 否 | 是 | 示例中没有 |
+| Vercel | 否 | 是 | 示例中没有 |
+| Daytona | 否 | 是 | 示例中没有 |
+| exe.dev | 是 | 是 | 示例中没有 |
+| Boat | 不保证 | 部分 | 示例中没有 |
+
+- **内存** — 唤醒后进程继续运行，包括 [portal](/orbs/portals) 后的服务、终端会话与桌面应用
+- **磁盘** — 文件与已装软件在暂停后还在，唤醒时跑 `.agents/resume` 而不是 `.agents/setup`
+- **项目快照** — 新线程从准备好的 orb 副本起步，快照有效期内跳过 `.agents/setup`
+
+## 上手
+
+为你的平台写一个 dispatch 程序，在工作区注册 provider，然后开第一条线程。GKE、EKS、AKS 可以直接用 [Amp 的 Helm chart](/orbs/self-hosted/kubernetes)。
+
+### 写 dispatch 程序
+
+把示例存成 `dispatch.sh`、`dispatch.py` 或 `dispatch.mjs` 并改造。provider 通过**环境变量**把每个任务传给程序；示例都把 `ORB_TOKEN` 传进 orb 以连回线程，多数会启动 `ORB_IMAGE`。
+
+Amp 默认的 `ORB_IMAGE` 已含 Amp CLI 等依赖；ARM64 主机请用对应的 ARM64 镜像，也可以自带镜像。
+
+### dispatch 契约
+
+| 变量 | 说明 |
+| --- | --- |
+| `ORB_JOB` | `spawn` / `pause` / `delete` |
+| `ORB_ID` | orb 标识，与线程对应 |
+| `ORB_TOKEN` | 让 orb 连回线程的令牌，交给 `amp orb bootstrap` |
+| `ORB_IMAGE` | 要启动的镜像 |
+| `ORB_CPU` / `ORB_MEMORY` | 规格（来自项目的 orb 规格） |
+| `ORB_PAUSE_REASON` | 暂停原因 |
+
+`spawn` 必须在 orb 内启动 `amp orb bootstrap`；`pause` 要保存磁盘（能存内存就存），让下次 `spawn` 从同一状态继续；`delete` 要彻底移除机器或容器及其磁盘。
+
+### 注册 provider
+
+在工作区设置里创建 provider（管理员操作），拿到令牌后作为 `AMP_ORB_PROVIDER_TOKEN` 交给 `amp orb provider`。同一工作区可以有多个 provider，项目可以指定用哪个。
+
+```bash
+AMP_ORB_PROVIDER_TOKEN=… amp orb provider ./dispatch.sh
+```
+
+provider 需要长期运行；建议用 systemd、Kubernetes Deployment 或类似方式托管。
+
+## 项目快照
+
+支持快照的平台可以缓存"装好依赖、跑完 setup"的 orb 副本：新线程直接用缓存，快照过期后重新生成。Kubernetes chart 与同主机 Docker 都支持（后者只在同一主机内共享）。
+
+## 自定义镜像
+
+自带镜像时，镜像需包含 Amp CLI（`amp`）以及项目 setup 需要的工具；provider 会用 `amp orb bootstrap` 启动它。镜像不必包含 agent 的模型凭据。
+
+## 网络要求
+
+- **provider → Amp**：出站 HTTPS 443，到 `ampcode.com`（或你的 `AMP_URL`）
+- **orb → Amp**：同样是出站 HTTPS，用来接收提示与工具调用
+- **orb → 你的 Git 主机与包仓库**：克隆、安装依赖
+- 不需要任何入站端口
+
+## 什么会离开你的网络
+
+Amp 看到的是线程里的会话数据：提示、工具调用与结果，以及终端与 portal 的元数据。项目代码与磁盘内容留在你的基础设施里，除非某个工具把它们发给模型或外部服务。密钥由 Amp 下发、不进镜像。
+
+## 价格
+
+在 Hobby、Individual、Teams 上自托管 orb 免费——你支付自己的算力。企业版按合同。
+
+## 平台
+
+- **Kubernetes** — 官方 Helm chart，见[在 Kubernetes 上自托管](/orbs/self-hosted/kubernetes)
+- **Docker / Apple containers** — 单主机，快照仅本机可用
+- **E2B、Modal、Vercel、Daytona、exe.dev、Boat** — 用 dispatch 示例接入，快照支持情况见上表

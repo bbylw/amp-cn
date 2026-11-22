@@ -1,0 +1,72 @@
+---
+title: 流式 JSON
+description: 让 CLI 把每条消息打成一行 JSON，供程序和脚本使用。
+sidebar:
+  order: 6
+  group:
+    label: CLI
+---
+
+Amp CLI 可以把每条消息打成一行 JSON，用于程序化集成，或在对话运行时做监控。
+
+## 基本用法
+
+`--stream-json` 必须与 `--execute` 一起用：
+
+```bash
+amp --execute "what is 3 + 5?" --stream-json
+```
+
+继续已有线程、从标准输入给提示：
+
+```bash
+amp threads continue --execute "now add 8 to that" --stream-json
+echo "analyze this code" | amp --execute --stream-json
+```
+
+也可以喂流式 JSON 输入：
+
+```bash
+echo '{"type":"user","message":{"role":"user","content":[{"type":"text","text":"what is 2+2?"}]}}' \
+  | amp --execute --stream-json --stream-json-input
+```
+
+加 `--stream-json-thinking` 会包含思考块（扩展了 schema，与 Claude Code 不兼容）。
+
+每段对话以 `init` 系统消息开始，随后是用户与助手消息，最后是一条 `result` 消息（结果与运行统计）。每条消息都是一个独立 JSON 对象。
+
+## 输出示例
+
+```json
+{"type":"system","subtype":"init","cwd":"/Users/orb","session_id":"T-f9941a55-…","tools":["Bash","create_file","edit_file","glob","Grep","Read","Task","todo_read","todo_write","web_search"],"mcp_servers":[{"name":"postgres","status":"connected"}]}
+{"type":"user","message":{"role":"user","content":[{"type":"text","text":"what is 3 + 5?"}]},"parent_tool_use_id":null,"session_id":"T-f9941a55-…"}
+{"type":"assistant","message":{"type":"message","role":"assistant","content":[{"type":"text","text":"8"}],"stop_reason":"end_turn","usage":{"input_tokens":10,"output_tokens":99}},"parent_tool_use_id":null,"session_id":"T-f9941a55-…"}
+{"type":"result","subtype":"success","duration_ms":5400,"is_error":false,"num_turns":1,"result":"8","session_id":"T-f9941a55-…"}
+```
+
+工具调用会在助手消息里以 `tool_use` 内容块出现，工具结果作为用户消息里的 `tool_result` 块返回：
+
+```json
+{"type":"assistant","message":{"content":[{"type":"tool_use","id":"toolu_…","name":"read","input":{"path":"/Users/orb/project"}}],"stop_reason":"tool_use"}}
+{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"toolu_…","content":"[\"index.js\",\"README.md\"]","is_error":false}]}}
+```
+
+## 消息 schema
+
+```ts
+type StreamJSONMessage =
+  | { type: 'system'; subtype: 'init'; cwd: string; session_id: string; tools: string[]; mcp_servers: { name: string; status: string }[] }
+  | { type: 'user'; message: { role: 'user'; content: ContentBlock[] }; parent_tool_use_id: string | null; session_id: string }
+  | { type: 'assistant'; message: { type: 'message'; role: 'assistant'; content: ContentBlock[]; stop_reason: string; usage?: Usage }; parent_tool_use_id: string | null; session_id: string }
+  | { type: 'result'; subtype: 'success' | 'error'; duration_ms: number; is_error: boolean; num_turns: number; result: string; session_id: string }
+```
+
+`ContentBlock` 为 `text`、`tool_use`、`tool_result`，开启 thinking 时还会有 `thinking` 与 `redacted_thinking`。
+
+## 流式 JSON 输入
+
+`--stream-json-input` 从标准输入逐行读取同样形状的消息，适合把外部事件喂给一次长跑的会话。输入以 `user` 消息为主，没有更多输入时关闭 stdin。
+
+## 与 Claude Code 兼容
+
+除 `--stream-json-thinking` 外，输出形状与 Claude Code 的 streaming JSON 兼容，已有的集成脚本通常可以直接复用：把 `claude` 换成 `amp --execute`，并保留 `--stream-json`。

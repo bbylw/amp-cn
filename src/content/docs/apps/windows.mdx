@@ -1,0 +1,89 @@
+---
+title: Windows
+description: 安装 Windows 应用，用内置 runner 跑线程。
+sidebar:
+  order: 4
+  group:
+    label: 应用
+---
+
+**Amp for Windows** 需要 Windows 10 1809 或更高版本，或 Windows 11。下载 `.appinstaller` 文件后打开，App Installer 会完成安装。
+
+应用每次启动时检查更新，并在下次启动时安装。想立刻装，点侧边栏的 **Relaunch to Update**（当前窗口会在原页面重新打开）。
+
+## 特性
+
+- **线程与 orbs** — ampcode.com 上能做的都能做
+- **在本机跑线程** — 应用可以为每个账号运行 [runner](/cli/runners)，让你在任何设备上启动的线程跑在这台电脑上
+- **通知** — 线程就绪、有人 @ 你或申请访问线程时弹出通知；点通知进入线程。有人请你共享线程、打开 multiplayer 或加入 Space 时，通知上直接有 **Share with Workspace**、**Allow Multiplayer**、**Add as Contributor** 与 **Decline** 按钮。想关掉通知：Windows 设置 → 系统 → 通知 → 关闭 Amp
+- **任务栏未读数** — 任务栏按钮显示侧边栏里有未读圆点的线程数；后台有一条线程在等你时会闪烁（关掉 Amp 通知后这些也会关掉）
+- **系统托盘** — 托盘图标里有最近线程，可选择登录时启动
+- **任务栏跳转列表** — 右键任务栏图标可新建线程、打开 Puck、呼叫 Puck或打开最近线程；彩色圆点表示运行中、未读、等待你或失败。想关掉应用后仍可用，选 **Pin to taskbar**
+- **分享给 Puck** — 在资源管理器或 Edge 等应用里选 **Share** → Amp，把文字、链接、图片或文件发给 [Puck](/workspace/puck)
+- **通行密钥** — 用 Windows Hello、安全钥匙、手机，或在 Windows 设置里启用的密码管理器（如 1Password、Bitwarden）确认；只存在浏览器扩展里的 passkey 在应用里不可用，这类操作请用浏览器版 Amp
+
+## Puck
+
+默认在侧边栏；想单独窗口，就在窗口菜单里选 **Open Puck in Separate Window**。
+
+## 系统托盘
+
+托盘菜单包含最近线程、Puck、新建线程、设置与退出。关闭窗口时应用可以继续驻留托盘（取决于设置），这样 runner 与通知仍在。
+
+## 登录时启动
+
+在应用设置里打开 **Start at Login**。
+
+## 任意应用里的快捷键
+
+可以设置全局快捷键新建线程或呼叫 Puck，在任何应用里都能用。
+
+## 窗口与菜单
+
+- `Ctrl+N` 新建线程，`Ctrl+Shift+N` 新窗口
+- `Ctrl+,` 打开设置
+- `Alt+←` / `Alt+→` 后退/前进
+- `Ctrl++` / `Ctrl+-` / `Ctrl+0` 缩放
+- `F5` 重载窗口
+
+## 账号
+
+应用支持多个账号，每个账号有自己的 runner 与设置卡片；通知与展开的窗口按账号区分。
+
+## 在本机运行线程
+
+打开 **Settings → Runner**，为账号打开 **Run threads on this computer**，并添加允许线程运行的目录：
+
+- **Add Folder…** 添加单个项目
+- **Add Parent Folder…** 添加存放项目的父目录（含后续新建的克隆与 worktree）
+- **Serve Home Folder** 允许在 `~` 任意位置运行
+
+应用会用 Amp CLI 起一个 runner（找不到时提供安装），在**这台电脑上**启动的 runner 在选择器里标记为 **This Computer**。
+
+### 工作原理
+
+应用执行 `amp --no-tui --no-serve-cwd --runner-id <name>`，每个父目录一个 `--discover-dirs`，只服务你添加的目录及其中的检出。runner 意外退出会自动重启，退出应用时停止。它使用本机安装的 Amp CLI 与它的登录状态。
+
+## 后退与前进
+
+窗口内导航支持后退/前进（`Alt+←` / `Alt+→`），Portal 页面会保留滚动位置。
+
+## 从链接打开线程
+
+`ampcode.com/threads/...` 链接在应用启动后由应用打开；浏览器里点的链接会先进浏览器再询问。
+
+## 在组织中部署与管理
+
+Windows 应用支持通过 Intune 部署：
+
+1. 在 Intune 里添加 **Windows app (Win32)** 或使用 App Installer 的在线地址
+2. 把 `https://static.ampcode.com/windows/Amp.appinstaller` 作为安装源
+3. 通过 Intune 的配置下发设置（如登录时启动、允许的 runner 目录）
+
+### 设置
+
+应用设置可通过注册表/策略预置，常见项包括是否登录时启动、是否允许本机 runner、通知开关与默认窗口行为。
+
+### 与 Mac 应用的差异
+
+没有「共享屏幕」「共享网络」等 Mac 专属能力，也没有把 Mac 当作卫星机的功能；Puck 的独立窗口、分享到 Puck、passkey 与 runner 支持则一致。

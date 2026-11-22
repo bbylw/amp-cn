@@ -1,0 +1,48 @@
+---
+title: Multiplayer
+description: 和同事在同一个线程、同一个 orb 里一起给 agent 发提示。
+sidebar:
+  order: 2
+  group:
+    label: 协作
+---
+
+在 Amp 里，你可以和同事一起用同一条线程和它的 [orb](/orbs) 或[共享 runner](/cli/runners)，共同驱动 agent。
+
+## 打开 Multiplayer
+
+打开线程，点主线程栏顶部的摇杆按钮，在对话框里确认，multiplayer 就会开启 7 天。
+
+只有两类环境支持 multiplayer：**orb** 和**共享 runner**。共享 runner 上，你在共享时指定的工作区里启动的线程都可以；没共享的 runner 上的线程不能开 multiplayer——那等于让同事访问你从未共享的机器。runner 所有者停止共享后，在该 runner 上创建的线程 multiplayer 全部结束。
+
+在私有线程上开启 multiplayer 会把线程分享给工作区。想提前结束，点顶部摇杆选 **End Now**；剩余不足 5 天时同一菜单会出现 **Extend Multiplayer**，重新计 7 天。到期自动结束。要指定精确时长：`amp threads share multiplayer ttl <thread> --hours 3`（5 分钟到 7 天）。开启期间，线程只能在 orb 或共享 runner 上再开线程。
+
+multiplayer 生效期间，工作区同事可以在你的线程里发提示，访问该线程的 orb / 共享 runner，包括 portal、终端和文件浏览器。agent 与 orb 费用计在线程所有者账上。
+
+:::caution
+multiplayer 期间，所有能参与的人都能访问线程、orb 或共享 runner、密钥、文件和终端。对已分享给工作区的线程来说，就是整个工作区。
+:::
+
+## 对 Amp 账户的改动
+
+agent 会用你的凭据改你的 Amp 账户设置、密钥等配置，所以在 multiplayer 线程里它会拒绝这么做——对你本人也一样。对工作区的 [Box](/boxes) 及其密钥/环境变量、工作区的 Sign in with Amp 客户端，它会先询问：由你或工作区管理员在对话框里批准，线程里的其他同事不能。批准启动、停止、排程 box 或列出密钥名时可以勾选 **Don't ask again in this thread**。创建你或工作区拥有的项目、删除项目的 orb 快照、设置/删除个人或项目密钥前，它也只会问你。密钥值由你自己输入，不会出现在线程消息里，但仍会进入该线程的 orb，线程里的同事能读到。其它改动（如添加项目的 Desktop resume 脚本）请到非 multiplayer 线程或设置里做。
+
+## Multiplayer 线程里的 MCP 服务器
+
+agent 用你的凭据调用你的远程 MCP 服务器，即使提示来自同事。想让某个服务器的工具不进 multiplayer 线程，就在 MCP 设置里编辑它时关掉 **Privacy** 下的 **Use in Multiplayer Threads**（默认开启）。multiplayer 期间包括你在内都不能用它，结束后恢复。工作区管理员可以对工作区服务器设置。详见 [MCP](/customization/mcp)。
+
+## Multiplayer 线程里的集成
+
+有些集成会以你的身份行事，包括同事发提示时。multiplayer 期间，除非你允许，包括你在内都不能用它们；结束后恢复：
+
+- [Google](/integrations/google)
+- 你的个人 Linear 安装（用于评论 issue）
+- 你自己的 App Store Connect key（包括 Mac orb 上的签名）；工作区 key 仍可用
+
+允许方式：在设置的 **Integrations** 里给对应卡片打开 **Use in Multiplayer Threads**。这防的是误用，不是有意的贡献者。
+
+工作区安装的 Linear 工作区对工作区内所有线程遵循同一规则，需工作区管理员在 **Integrations → Linear** 里打开 **Use in Multiplayer Threads**。Slack 不同：public 频道始终可读（Slack 工作区里人人都看得到），发消息与加表情会逐条请线程所有者批准（因为用它自己的 Slack 账号发），贡献者不能批准；所有者可勾 **Don't ask**。私有频道、私信和免批准发送需要 Slack 卡上的 **Allow Private Channels, DMs, and Sending in Multiplayer Threads**（一个开关同时放开三者）。工作区管理员可在 **Integrations → Slack** 的 **Multiplayer Threads** 里限制所有成员。
+
+## @ 成员与 Huddle
+
+用 `@` 标记工作区成员会自动邀请对方并开启 multiplayer。想直接说话，就进线程的 [Huddle](/collaborate/huddle)，它不依赖 multiplayer。同一线程里的成员也可以互相聊天。

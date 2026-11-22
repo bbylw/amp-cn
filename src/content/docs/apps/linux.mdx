@@ -1,0 +1,60 @@
+---
+title: Linux
+description: 安装 Linux 桌面应用，自带 runner。
+sidebar:
+  order: 5
+  group:
+    label: 应用
+---
+
+**Amp for Linux** 支持 Debian 12+、Ubuntu 22.04+、Fedora、Arch，架构为 x86-64 或 ARM64。
+
+```bash
+# Debian / Ubuntu
+sudo curl -fsSL -o /etc/apt/sources.list.d/amp.sources https://static.ampcode.com/linux/amp.sources && sudo apt update && sudo apt install amp-desktop
+
+# Fedora
+sudo curl -fsSL -o /etc/yum.repos.d/amp.repo https://static.ampcode.com/linux/amp.repo && sudo dnf install amp-desktop
+
+# Arch / Omarchy
+yay -S amp-desktop-bin
+```
+
+应用随系统更新（`sudo apt upgrade`、`sudo dnf upgrade`）。没有 AppImage 或 tarball：登录回跳依赖已安装的包注册的链接。
+
+登录时点 **Sign In**，会在浏览器打开 ampcode.com，完成后回到应用。
+
+## 更新
+
+```bash
+# Arch / Omarchy
+yay -Syu amp-desktop-bin
+
+# Debian / Ubuntu
+sudo apt update && sudo apt install --only-upgrade amp-desktop
+
+# Fedora / RHEL
+sudo dnf upgrade amp-desktop
+```
+
+已打开的窗口仍跑旧版本：点侧边栏的 **Relaunch to Update**（会停留在当前页面），或从托盘退出后重新打开。
+
+## 特性
+
+- **线程与 orbs** — ampcode.com 上能做的都能做；Amp 页面在应用窗口里打开，文档等外部链接进浏览器
+- **通知** — 线程就绪、有人 @ 你或申请访问你的线程时发桌面通知；需要通知服务（mako、dunst 或桌面自带），没有时改发到你的其它设备
+- **启动器未读数** — KDE Plasma、Ubuntu Dock、Dash to Dock、Plank 会显示未读线程数
+- **Omarchy 主题** — 在 Omarchy 上跟随系统主题配色
+- **通行密钥** — 需要 passkey 确认或添加时显示二维码：用手机扫码确认（电脑需开蓝牙），或插入 USB 安全钥匙；应用无法使用存在这台电脑上的 passkey，这类操作请在浏览器里完成
+- **缩放** — `Ctrl+=`、`Ctrl+-`、`Ctrl+0`，会记住
+- **本机 runners** — 选择运行位置时标记为 **This Computer**，含内置 runner 和终端里启动的 runner
+
+## 从链接打开线程
+
+在别的应用或浏览器里点击线程链接会先进浏览器，线程页面再询问是否交给 Linux 应用打开。只发一条线程给应用，点线程头部的 **Open in Linux App** 或在命令面板里选它；应用没装时 Amp 会提示安装。
+
+## 内置 runner
+
+应用可以在本机跑线程，并可从 ampcode.com 和所有设备上的 Amp 应用启动、控制它们，和 [Mac 应用的 runner](/apps/mac) 类似。打开 **App Settings → Runner**，在你邮箱旁 **Run threads on this computer** 打开开关。应用会把 Amp CLI 作为 runner 运行，找不到时提供安装。
+
+runner 只在你添加的目录里工作（与 `amp runner dirs add` 是同一份列表）；打开 **Serve Home Folder** 可以让它在整个 home 下工作。

@@ -1,0 +1,127 @@
+---
+title: Runners
+description: 在任意能跑 amp 的机器上运行 ampcode.com 启动的线程。
+sidebar:
+  order: 4
+  group:
+    label: CLI
+---
+
+你可以在 ampcode.com 上启动线程，让它在任何能运行 `amp` 的机器上执行。那台机器就是 **runner**。
+
+## 启动 runner
+
+```bash
+amp --no-tui
+```
+
+这会在当前目录启动一个只做 runner 的 Amp 实例，等待并运行远程创建的线程，不打开 TUI。想服务多个目录，见下文的「服务多个目录」。
+
+加 `--runner-id <id>` 给它一个稳定的 ID：
+
+```bash
+amp --no-tui --runner-id grandmas-garage-server
+```
+
+runner ID 必须是合法主机名、大小写不敏感（Amp 保留你写的写法）。
+
+### Orb 网络路由
+
+不少站点屏蔽云 IP。用 Orb Network Routing，orb 可以通过你自己电脑的网络浏览网页：
+
+```bash
+amp --no-tui --runner-id home-mac --share-network
+```
+
+Mac 上可以用应用里的开关。然后在 orb 线程的 **•••** 菜单里 **Orb › Network Routing** 选 `home-mac`；使用期间保持 runner 运行、电脑不睡眠。
+
+路由只在 orb 启动**之后**生效：启动前 Amp 用 orb 自己的连接克隆仓库并跑 setup 脚本。若只有你的网络能访问某个仓库，克隆会失败——这种项目请在该网络的 [runner](#runner-与-orb-的区别) 上跑线程，或用[自托管 orb](/orbs/self-hosted)。
+
+runner 只把 orb 连到公网地址，orb 无法访问 runner 本机或局域网内其它设备。
+
+管理员可以在工作区设置的 **Orbs › Orb Network Routing** 里对全员关闭。
+
+想让 agent 自动这么做，可以在 `AGENTS.md`（或全局 `AGENTS.md`）里写：
+
+```markdown
+Before using the web in an orb, run `amp net route home-mac`.
+```
+
+要从 ampcode.com 访问 runner 的终端，加 `--remote-control-terminal`：
+
+```bash
+amp --no-tui --runner-id grandmas-garage-server --remote-control-terminal
+```
+
+终端跑在 tmux 里，先装 tmux（macOS：`brew install tmux`）；找不到时 runner 会在启动时警告。
+
+### runner 上的 Portal
+
+用 `amp --no-tui --remote-control-portals` 启动，其线程就会有 Portal 标签，可在任意浏览器或 iPhone/iPad 应用里打开。用它看 dev server、试刚做出来的应用或给团队演示。Mac 应用里对应的开关是 **Allow Portals**。
+
+在 runner 的线程里让 Amp 启动应用，然后从线程的 **Portal** 标签打开。你能打开 runner 上所有 portal，与你共享 runner 的工作区成员也可以；能写该线程的人都能看到它的 Portal 标签。runner 的 portal 不能公开，页面上也没有评审按钮。
+
+runner 重启或机器重启后 portal URL 不变。Amp 不会在 runner 回来时自动启动任何东西：第一次有人打开某个服务没在跑的 portal 时，runner 会重启它（`.amp/services.yaml` 与 `amp orb service start` 的服务，以及用 `amp orb portal <port>` 共享的端口）。Amp 不会去跑不是它启动的服务器，这类进程请自己管（例如 systemd）。`.agents/setup` 与 `.agents/resume` 只在 orb 里运行。
+
+## 服务多个目录
+
+首页 runner 服务一个项目；你可以额外传入目录：
+
+```bash
+amp --no-tui --serve-cwd --discover-dirs ~/code --discover-dirs ~/work
+```
+
+- `--discover-dirs` 扫描其中的 Git 检出（含 worktree）
+- `--serve-cwd` 显式服务当前目录
+
+应用会按目录启动多个进程（每个父目录一个），ID 形如 `my-laptop:~/code`。
+
+## 管理 runner
+
+在 **Settings → Runners** 里查看所有 runner：在线状态、最后心跳、服务目录、版本与标签。可以：
+
+- **重命名** — 改 ID
+- **移除** — 断开并停止接受新线程
+- **查看目录** — 列出它服务的目录
+- **停止** — 让 runner 不再接新线程
+
+CLI 等价命令：
+
+```bash
+amp runners list
+amp runners remove <runner-id>
+```
+
+## 共享 runner
+
+工作区里可以共享 runner，让成员在它上面启动线程：
+
+```bash
+amp --no-tui --runner-id build-box --share-with-workspace
+```
+
+或在 Settings → Runners 里打开共享。共享 runner 上的线程以发起线程的成员身份运行；成员离开工作区后其线程不再接新提示。管理员可以为整个工作区开启/关闭。
+
+## 安全
+
+- 使用通行密钥（passkey）保护跨客户端访问；工作区可以强制
+- runner 只能运行你账号可见的线程
+- 远端创建的线程在 runner 上以你的本机用户运行，能访问该用户的文件，所以只在受控目录上服务
+- 传输层是加密的 WebSocket，outbound 只需 443 出站
+
+## Runner 与 orb 的区别
+
+| | Runner | Orb |
+| --- | --- | --- |
+| 位置 | 你的机器 | Amp 托管的 VM |
+| 状态 | 与你本机文件、网络、凭据共享 | 从快照重建，干净 |
+| 适合 | 需要内网、非容器化工具、GPU | 并行、可丢弃、可并发复制 |
+| 网络路由 | 可给 orb 提供网络 | 默认云 IP |
+
+[Boxes](/boxes) 上的每个 box 也带一个 runner，用来改线上的应用。
+
+## 排错
+
+- runner 显示离线：确认进程在跑、能出站到 443、登录没过期
+- 线程卡在 "waiting for runner"：runner 服务的目录不含该项目
+- portal 打不开：服务没在跑，且不是 runner 启动的

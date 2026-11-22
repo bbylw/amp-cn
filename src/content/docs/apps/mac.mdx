@@ -1,0 +1,105 @@
+---
+title: macOS
+description: Mac 应用，以及把 Mac 本身当作 runner。
+sidebar:
+  order: 1
+  group:
+    label: 应用
+---
+
+**Amp for macOS** 需要 Apple 芯片与 macOS 26 或更高版本。下载 DMG，打开后把 Amp 拖进「应用程序」。应用自动检查更新；想立刻检查，用 Amp 菜单里的 **Check for Updates…**。也可以用 Homebrew 安装：
+
+```sh
+brew install --cask ampcode/tap/amp@beta
+```
+
+## 线程与 Orbs
+
+Amp 里能做的事应用里都能做：线程跑在 [orb](/orbs) 里，或跑在你的 [runner](/cli/runners) 上，包括这台 Mac。
+
+## Puck
+
+默认在侧边栏打开。想让 Puck 单独一个窗口，在应用 **Settings > General** 里把 **Open Puck** 设为 **In Separate Window**，可以放在工作区旁边或另一块屏幕；它读主窗口正在看的页面，所以"这条线程""这个项目"仍然有效。从 Puck 打开的线程或页面会另开窗口。也可以右键侧边栏的 Puck 选择 **Open in Separate Window** / **Dock in Sidebar**。
+
+应用会往快捷指令加 **Dictate to Puck** 和 **Call Puck** 两个快捷方式。
+
+## 分享给 Puck
+
+从任何应用的分享面板把图片分享到 Amp，可附一句话再发送，图片进 [Puck](/workspace/puck)。
+
+## 通知
+
+线程准备好接受下一条消息时通知你，点击进入线程。在 **App Settings… > General** 里用 **Allow Notifications** 控制这台 Mac 是否通知；账号级的选择在通知设置里。你正在看的线程不发通知。
+
+## 从链接打开线程
+
+`https://ampcode.com/threads/...` 链接在启动过一次应用后会由 Mac 应用打开（Slack、邮件、备忘录里的链接同样）。会在你上次使用的窗口打开；多账号时，若该窗口的账号看不到该线程，会换到能看到的账号窗口。Chrome 里点击的链接会进浏览器，随后页面会询问是否以后交给 Mac 应用打开。
+
+## 窗口与菜单
+
+- **File > New Thread**（`⌘N`）—— 在前台窗口新建线程
+- **File > New Window**（`⇧⌘N`）—— 新窗口
+- `⌘,` 打开个人设置，`⌥⌘,` 打开工作区设置
+- `⌘[` / `⌘]` 后退/前进
+- `⌘R` 重载当前 Portal，`⇧⌘R` 重载窗口
+- `⌘+` / `⌘-` / `⌘0` 缩放
+- **Help > Keyboard Shortcuts** 查看快捷键
+
+## 把这台 Mac 当 runner
+
+应用可以替你跑 [runner](/cli/runners)，不用在终端里常驻 `amp --no-tui`。
+
+1. 打开 **App Settings…**（`⌘⇧,`）→ **Runner**
+2. 为账号打开 **Run threads on this Mac** 开关（每个账号一张卡片）
+3. 在 **Local Folders** 旁点 **+** 添加线程可以运行的目录：
+   - **Add Folder…** 添加一个项目（选项目的 Git 检出目录，而不是包含多个项目的目录）
+   - **Add Parent Folder…** 添加存放项目的父目录（如 `~/code`），最多两层内的所有 Git 项目都会共享，包括之后新建的 worktree 和克隆
+   - **Add Home Folder** 允许线程在 `~` 及其任意子目录运行，但不会把里面的项目加入选择器
+
+   **Choose Projects…** 会列出本机 Git 项目供勾选。每个本地目录都会列在 **Local Folders** 下，点 **⋯ → Remove Folder** 移除。
+
+应用实际运行的是 `amp --no-tui --no-serve-cwd --runner-id <name>`，每个父目录一个 `--discover-dirs`。runner 以 Mac 名称加 `-amp-app` 命名，可在 **Runner Name** 旁铅笔图标改名。它使用本机已安装的 Amp CLI（通过交互式登录 shell 的 `PATH` 找到）和 CLI 的登录状态；CLI 缺失、未登录或过旧时，Runner 标签会给出对应的修复按钮（Install / Sign In / Update）。
+
+文件夹列表属于 runner，也可以在终端改：
+
+```bash
+amp runner dirs add --runner-id macbook-pro-amp-app ~/code/amp
+```
+
+在本 Mac 上启动的 runner 在选择器里标记为 **This Mac**。
+
+### 在编辑器打开 / 在 Finder 显示
+
+运行在本机的线程里，文件查看器的 **⋮** 菜单有 **Open in Editor**（按 macOS 对该文件类型的默认编辑器打开）；**Files** 标签里每个文件/目录的菜单有 **Show in Finder**，方便直接拖进别的应用。
+
+### 允许终端访问
+
+线程的终端标签只在 runner 以 `--remote-control-terminal` 启动时可用，所以应用 runner 默认禁用。在 Runner 标签打开 **Allow Terminal Access** 即可（应用会重启 runner），然后刷新线程页面。终端需要 tmux：`brew install tmux`。
+
+### 允许 Portal
+
+打开 **Allow Portals**，应用会用 `--remote-control-portals` 启动 runner，本机线程就能把 web 服务共享成 [portal](/cli/runners)。
+
+### 共享这块屏幕
+
+打开 **Share This Mac's Display** 后，任何跑在本机的线程都能从 Desktop 标签看到并控制这台 Mac（浏览器或手机上也可以）。macOS 会要求给 Amp Desktop Helper 授予屏幕录制与辅助功能权限。需要 Apple 芯片；能写该线程的人都能看到并控制屏幕。
+
+### 与工作区共享
+
+打开 **Share With Workspace** 相当于 `--share`：工作区成员和 Spaces 可以在本机启动线程。开启前应用会让你确认，因为这些线程会以你的身份运行代码，能访问你的文件、凭据和登录状态。开关不可见时，先更新应用，再让管理员在 **Member Settings** 打开 **Allow Members to Share Runners**。
+
+### 共享网络 与 保持唤醒
+
+**Share This Mac's Network Connection** 打开后可以把 orb 的流量经这台 Mac 路由出去。[见 Orb 网络路由](/cli/runners)。
+
+Mac 只有在唤醒时才能跑线程：睡眠期间不能在其上启动线程，已在跑的会暂停。插着电源且 runner 开启时，**Keep This Mac Awake** 阻止系统自动睡眠（屏幕可以关闭、可以锁屏），菜单栏图标会显示一个杯子。电池供电、合盖、手动睡眠仍会睡眠，且 Amp 无法唤醒睡眠中的 Mac。睡眠约 90 秒后该 Mac 会从选择器消失；唤醒后 runner 通常一分钟内重连，线程从停下的地方继续。
+
+## 更新
+
+应用每小时检查并在后台下载，就绪时菜单出现 **Update Ready: Relaunch**。想关掉自动检查：
+
+```sh
+defaults write com.ampcode.amp.macos SUEnableAutomaticChecks -bool false
+```
+
+恢复自动检查用 `defaults delete com.ampcode.amp.macos SUEnableAutomaticChecks`。

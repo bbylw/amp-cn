@@ -1,0 +1,67 @@
+---
+title: 模型路由
+description: 用自己的 key、订阅或网关提供模型，顺序由你定。
+sidebar:
+  order: 7
+  group:
+    label: 定制
+---
+
+模型路由决定每个模型由哪个提供方服务。默认所有模型都由 Amp 提供并从 Amp 积分扣费。你也可以添加自己的连接，让部分或全部模型走自己的 API key、订阅或网关，由供应商直接向你计费。企业版价格可以对经你的连接服务的 token 加收 Amp 费用（按标价百分比或每 token 固定金额，含缓存 token），每条连接在 Model Routing 里的 Billing 详情会显示费用。
+
+个人连接在个人设置的 [Model Routing](https://ampcode.com/settings/model-routing) 里管理，管理员在工作区的 Model Routing 里管理共享连接。CLI 用 `amp config model-providers`，[Puck](/workspace/puck) 也能列出、添加、测试、排序和编辑你的连接；线程里的 agent 用 `manage_amp` 工具的 `model_providers` 主题。
+
+:::tip
+强烈建议让 Amp 或 Puck 帮你配：它们能试一套配置、测试、就地修好，比手工逐项对参数快得多。
+:::
+
+## 连接类型
+
+一条连接 = 一份凭据 + 它的设置，分四类：
+
+- **API key** — 单一提供方，如 Anthropic、Google AI Studio、Meta AI、OpenAI、xAI。用量记在你的供应商账号上。Anthropic、OpenAI、OpenRouter 还支持用工作负载身份联合代替 key
+- **订阅** — 如 ChatGPT 或 𝕏 Premium+/SuperGrok，浏览器登录，用量计入套餐额度。用 ChatGPT 登录同时也登录 Amp，因此一个 ChatGPT 账号只能连一个 Amp 账号；要用多个 Amp 账号共享一个 ChatGPT 账号，请改用 **ChatGPT Subscription (Legacy)**，或在有浏览器的机器上运行 `amp config model-providers add-chatgpt-subscription --legacy`
+- **云平台** — Amazon Bedrock、Google Cloud Agent Platform（Vertex）、Microsoft Foundry（Azure AI Foundry），用量记在你的云账号上
+- **模型路由器 / 网关** — OpenRouter、Vercel AI Gateway、Cloudflare AI Gateway、ngrok AI Gateway、Ollama Cloud、OpenCode Go，以及任何 OpenAI/Anthropic 兼容端点（通过 Custom URL 连接）。一份凭据可以服务多家模型，所有档位都可用
+
+**Add Provider** 菜单只列出你当前可用的类型。个人连接作用于你自己的线程，工作区连接作用于所有成员；企业版管理员可以禁止个人连接。
+
+Amp 从自己的服务器发出模型请求。如果供应商或网关只接受已知 IP，请放行 [Amp 服务器地址](/reference/egress-ips)。
+
+每条连接都有 **Check Access** 按钮验证凭据。CLI 里 `amp config model-providers test <connection-id>` 等价，`amp config model-providers check-access --provider-model <provider/model>` 会跑一次短推理并告诉你实际由哪条连接服务。
+
+个人 ChatGPT、Claude、OpenCode Go、Ollama Cloud 连接会显示各额度的剩余与重置时间，Model Routing 打开时每 10 分钟刷新；Claude 订阅的额度是 Anthropic 最近一次报告的值。Sign in with ChatGPT 连接的用量要通过同一 ChatGPT 账号的 **ChatGPT Subscription (Legacy)** 连接读取，所以只有存在该连接时才显示。
+
+## GitHub Copilot
+
+在个人 Model Routing 里选 **Add Provider → GitHub Copilot**，或让 Puck 连接，或运行 `amp config model-providers add-github-copilot-subscription`。在浏览器里完成 GitHub 设备授权以批准 **Amp for Copilot**；对话框也接受带 Copilot 权限的 GitHub 用户令牌或细粒度 PAT。Amp 会加密该凭据，不放进 orb 环境，并自动续期将过期的设备登录令牌；GitHub 撤销授权或手动令牌过期后需重连。
+
+还需在你的 GitHub Copilot 设置里启用 **Copilot CLI**，Business/Enterprise 席位可能需要管理员开启。不需要安装 Copilot CLI 本身。
+
+Amp 会检查你的 Copilot 权益，并从账号发现支持工具的模型及其 API。默认使用 Amp 维护的 Copilot 模型清单（含 Fable），更新自动生效；保存自定义映射后以你的映射为准，清空即恢复默认，重连不会丢弃你的选择。你的 GitHub 账号仍需对每个模型有访问权；Business/Enterprise 席位需要管理员先在 GitHub 打开 Fable 的模型策略。推理时映射的模型可用性会缓存 5 分钟；**Check Access** 会拉取最新目录，它验证的是发现流程而非推理。
+
+每个人连自己的 GitHub 账号，即使组织提供了 Copilot Business/Enterprise 席位；该连接只作用于这个人的 Amp 线程。GitHub 的组织策略、限额与计费仍然生效。企业版 Cloud 数据驻留主机（`*.ghe.com`）暂不支持。
+
+## 优先级
+
+对每个模型，Amp 按顺序尝试你的连接，用第一条"活跃且其模型映射包含该模型"的连接；没有连接服务的就由 Amp 提供。
+
+连接顺序可以拖拽调整。**Painter**（图像生成）也按同一顺序寻找能出图的连接。
+
+## 启用与停用
+
+连接可以随时启用/停用，停用后不参与路由。删除连接会移除 Amp 保存的凭据；供应商侧的授权要另行撤销（例如 OpenAI/Anthropic 的授权页面）。
+
+## 模型映射
+
+每条连接声明它能服务哪些模型。默认映射由 Amp 维护；你可以自定义：
+
+```bash
+amp config model-providers set-mapping <connection-id> \
+  --provider-model anthropic/claude-opus-5.5=claude-opus-5-5
+```
+
+- **Amp 不认识的模型** — 用 Custom URL 或网关时，把 Amp 的模型名映射到供应商侧的模型 ID
+- **自定义 URL 连接** — 填 Base URL、API 兼容类型（OpenAI 或 Anthropic）、key 与模型映射
+
+映射写错时该模型会被路由到失败，`check-access --provider-model` 能快速定位实际服务方。

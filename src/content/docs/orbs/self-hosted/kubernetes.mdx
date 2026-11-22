@@ -1,0 +1,129 @@
+---
+title: 在 Kubernetes 上自托管
+description: 用 Amp 的 Helm chart 在 GKE、EKS、AKS 上跑 orb。
+sidebar:
+  order: 16
+  group:
+    label: Orbs
+---
+
+Amp 的 Helm chart 在 GKE、EKS、AKS 上运行[自托管 orb](/orbs/self-hosted)：它把 orb provider 与 dispatch 程序装进同一个 pod，orb 以 gVisor 沙箱跑在 [Substrate](https://github.com/agent-substrate/substrate) 上——一个开源的 Kubernetes 沙箱运行时，随 provider 一起安装。
+
+## chart 如何工作
+
+pod 里有两个容器：`spawner` 运行 `amp orb provider` 接收来自 Amp 的任务；`provider` 向 Substrate 要沙箱（沙箱作为 pod 跑在你的某个工作节点上），并把暂停 orb 的磁盘存进你的存储桶，因此它能在任意节点上恢复。
+
+## 支持的平台
+
+| 平台 | 工作节点要求 | 存储 |
+| --- | --- | --- |
+| GKE Standard | Container-Optimized OS、Workload Identity、Dataplane V2 | Cloud Storage |
+| EKS（standard 或 Auto Mode）+ 独立节点组或 Karpenter 池 | Amazon Linux 2023 工作节点、开启 VPC CNI network policy | S3 + IRSA |
+| AKS | Ubuntu 或 Azure Linux 3.0、workload identity、开启 network policy | Azure Blob |
+
+chart 默认一种 16 vCPU / 32 GiB 的 orb 类型并保留一个备用工作节点，所以节点池要按你期望同时运行的 orb 数量来规划。想让节点池在没有 orb 时缩到零，把该类型设为 `min: 0`、`warm: 0` 并设 `workers.autoFill: true`；provider 只会在已运行 orb 的节点上保留备用工作节点，各类型按需求共享。
+
+## 开始前
+
+用满足平台 runbook 前提的专用集群，并从有云凭据、`kubectl`、Helm 3.14+ 且具 cluster-admin 权限的机器安装。bundle 里有 EKS 与 AKS 的 Terraform 示例。
+
+先在 Amp 里[设置 provider](/orbs/self-hosted)，chart 需要它的令牌。
+
+## 网络要求
+
+除了[自托管 orb 都需要](#网络要求)的出站访问，还要允许：
+
+| 来源 | 目标 | 用途 |
+| --- | --- | --- |
+| orb provider | `registry.npmjs.org` 或你配置的 npm registry 及其包下载主机，HTTPS 443 | 容器启动时安装 CLI |
+| 集群节点 | `us-central1-docker.pkg.dev`、`registry-1.docker.io`、`storage.googleapis.com` | 运行时与镜像下载 |
+| 集群节点 | 你的存储、云 API 与身份端点 | 保存磁盘与集群操作 |
+
+### 出站连接
+
+- **provider → Amp**：出站 HTTPS 443
+- **orb → Amp**：出站 HTTPS
+- **orb → 你的代码与包来源**：克隆与安装依赖
+- 不需要入站端口
+
+## 用 Amp 安装
+
+在能访问集群的机器上运行 Amp，下载安装 bundle：
+
+```bash
+export AMP_URL=https://ampcode.com
+curl -fsSLo bundle.zip "$AMP_URL/docs/orbs/self-hosted/bundle.zip"
+unzip bundle.zip
+cd amp-self-hosted-orbs
+amp
+```
+
+bundle 里有 `AGENTS.md`、本指南、各平台 runbook、冒烟测试与 Terraform 示例。然后用这段提示：
+
+```text
+Help me install self-hosted Amp orbs on <GKE, EKS, or AKS>. Read AGENTS.md and the platform runbook.
+Confirm the cloud account, region, cluster, snapshot storage, chart version, and egress policy.
+Have a workspace admin create the provider in Amp and supply its token securely before installing.
+Stop at the runbook checkpoints. Ask before creating billable resources, changing shared resources,
+or deleting anything. Never print credentials. Use the Helm chart, not hand-applied chart resources.
+```
+
+## 安装
+
+按 bundle 里的 `gke.md`、`eks.md` 或 `aks.md` 建集群与存储，再运行其中的 `helm install`。provider 令牌**不是** chart 值：先放进 release 命名空间的 Kubernetes Secret `amp-orb-spawner`（键 `AMP_ORB_PROVIDER_TOKEN`），这样 Helm、values 文件与 GitOps 仓库里都不会有它。例如 GKE 前提就绪后：
+
+```bash
+kubectl create namespace amp-orbs
+kubectl -n amp-orbs create secret generic amp-orb-spawner \
+  --from-file=AMP_ORB_PROVIDER_TOKEN=/secure/path/provider-token
+helm install orb-provider oci://us-central1-docker.pkg.dev/amp-prod-0/orb-provider/chart \
+  -n amp-orbs \
+  --set cloud=gke --set amp.url=https://ampcode.com \
+  --set snapshots.location=gs://<bucket>/amp-orbs/ \
+  --set snapshots.gke.projectID=<project> \
+  --set snapshots.gke.transferServiceAccount=ate-snapshot-transfer \
+  --wait --timeout 15m
+```
+
+不加 `--version` 会装最新 chart；用 `helm show chart <chart-url>` 可以看到具体版本。令牌文件里只能有令牌本身。轮换令牌时更新 Secret 并 `kubectl -n amp-orbs rollout restart deployment/amp-orb-provider`。
+
+从私有 npm registry 安装 CLI 时，在 release 命名空间建一个含 `.npmrc` 键的 Secret 保存 registry 配置与凭据，然后设：
+
+```yaml
+spawner:
+  npm:
+    registry: https://npm.example.com/repository/npm/
+    existingConfigSecret: ampspawner-npm
+```
+
+## orb 类型与调度
+
+`types` 定义可用的 orb 规格（vCPU、内存）与各自的 `min`/`warm`；`workers.autoFill` 让 provider 按需补足节点。工作区里的项目可以选择 orb 类型，用户看到的就是对应的规格。
+
+## 冒烟测试
+
+bundle 里的 smoke test 会：创建一条线程、等 orb 起来、跑一条命令、归档线程确认磁盘保存、再恢复并确认状态还在。安装后先跑它，再交给团队。
+
+## 升级
+
+```bash
+helm upgrade orb-provider oci://us-central1-docker.pkg.dev/amp-prod-0/orb-provider/chart \
+  -n amp-orbs --reuse-values --wait --timeout 15m
+```
+
+升级不会中断已暂停 orb 的磁盘；运行中的 orb 会随节点滚动重启，需要时先让线程空闲。
+
+## 卸载
+
+```bash
+helm uninstall orb-provider -n amp-orbs
+```
+
+这只移除 provider 与 Substrate；你的存储桶里已暂停 orb 的磁盘与集群资源（如节点池）需要自行清理，Terraform 示例里同样如此。卸载前先删除或归档相关线程，避免留下无人管理的 orb。
+
+## 排错
+
+- pod 起不来：检查 `amp-orb-spawner` Secret 是否存在、令牌是否有效
+- 节点无法下载镜像：放行上表里的镜像仓库
+- orb 一直 pending：节点池容量或 `types` 的 `warm`/`min` 设置不足
+- 恢复后状态丢失：检查快照存储的 bucket 与身份（GKE 的 transfer service account、EKS 的 IRSA、AKS 的 workload identity）

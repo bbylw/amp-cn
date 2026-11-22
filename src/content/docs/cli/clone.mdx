@@ -1,0 +1,48 @@
+---
+title: 克隆仓库
+description: 用 amp clone 取回 Amp 托管的项目、插件与技能仓库。
+sidebar:
+  order: 7
+  group:
+    label: CLI
+---
+
+`amp clone` 用来克隆 Amp 托管的仓库：Amp 托管[项目](/workspace)，或[全局插件与技能仓库](/customization/global-plugins)。GitHub 等 Git 主机上的仓库用普通的 `git clone`。
+
+## 克隆项目
+
+传所有者和项目名（所有者是你的用户名或工作区名）：
+
+```bash
+amp clone owner/project-name
+```
+
+也可以传项目 URL，或指定目标目录：
+
+```bash
+amp clone https://ampcode.com/@owner/project-name
+amp clone owner/project-name my-directory
+```
+
+## 克隆插件与技能仓库
+
+用简称克隆个人或工作区的仓库：
+
+```bash
+amp clone user-plugins
+amp clone user-skills
+amp clone workspace-plugins
+amp clone workspace-skills
+```
+
+克隆别人的（你有权限的）仓库用 `owner/-/plugins` 或 `owner/-/skills`。`amp plugins repositories` / `amp skills repositories` 可以列出你对哪些仓库有访问权。
+
+## 登录与 Git 凭据
+
+克隆私有项目或插件/技能仓库前先 `amp login`；公开项目不登录也能克隆。
+
+`amp clone` 会把 Amp 设为全局 Git 配置里的凭据助手，之后的 `git pull`、`git push` 都能用：每次 Git 命令由助手向 Amp 换取短期凭据，机器上不保存长期 Git 令牌。更新 Git 配置失败时克隆仍会成功，只是打印警告；加 `--no-git-setup` 或设 `AMP_NO_GIT_SETUP=1` 可跳过。
+
+## 在别的机器上克隆
+
+只拉代码的机器（构建服务器、GPU 机器）建议创建[只读 Git 凭据](/workspace)，用普通 `git clone`，而不是以你的身份登录。想在 agent 推送前把 orb 的成果拿到那台机器上，用 `amp sync --apply`。

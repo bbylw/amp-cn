@@ -1,0 +1,199 @@
+---
+title: Boxes
+description: 常开的机器，让你的应用一直在线，每个应用一个 URL。
+sidebar:
+  order: 6
+  group:
+    label: 工作区
+---
+
+box 是一台常开的电脑，用来跑你用 Amp 做出来的东西：网站、仪表盘、工具、长期运行的服务，各自有自己的 URL。
+
+在 orb 里做好的东西想一直可用，就放进 box。boxes 小而便宜——最小的 2 GB 内存，30 天运行时间约 $18；也可以让 Amp 在夜间关闭。
+
+你不用配置任何东西：让 Amp 把应用部署到 box，agent 会创建 box、构建应用并给你 URL。线上要改的时候，在 box 上开一条线程。
+
+## 工作原理
+
+1. 在 orb 或 runner 线程里开发，做好后让 agent 部署到 box（它替你创建 box）
+2. box 就绪后 agent 运行 `amp boxes deploy`；release 在 orb 或 runner 机器上构建后送到 box
+3. box 运行该 release，并在应用自己的 URL 上提供服务，例如 `https://bug-tracker--acme.onamp.dev`；一个 box 可以跑很多应用
+4. 每个 box 带一个 Amp runner，可以在 box 上开线程看日志、改数据、在线改应用
+
+每个 box 是 Ubuntu 24.04，20 GB 磁盘，四种规格可选。磁盘上的文件与数据在部署和重启后保留。
+
+## 部署应用
+
+在线程里说：
+
+```text
+Deploy this app to a box.
+```
+
+agent 会在仓库没有 `.amp/box.yaml` 时写一个，推送代码并运行 `amp boxes deploy`。首次部署会创建 box（几分钟）。也可以在 orb 的 Git 检出里自己跑：
+
+```bash
+amp boxes deploy --on alice/workbench --name bug-tracker --create
+```
+
+`alice/workbench` 是 box（用户名或工作区名 + box 名），`bug-tracker` 是应用名（会成为 URL 的一部分）。首次部署后 Amp 把目标存进 `.amp/box-deploy.json`，之后直接：
+
+```bash
+amp boxes deploy
+```
+
+文件里可以存多个目标（例如 staging 与 production），部署时点名（`amp boxes deploy staging`），或在对应应用目录里执行。
+
+`.amp/box.yaml` 说明如何构建、发哪些文件、跑哪些服务：
+
+```yaml
+build: pnpm install --frozen-lockfile && pnpm build
+source: false
+artifacts: [build, package.json]
+services:
+  web:
+    command: node build
+```
+
+部署过程：
+
+- Amp 在推送的分支上跑 `build`（通常在 orb 里）。先推送，未提交/未推送的文件不会到 box
+- 当检出正好在推送的提交上、没有未提交或未跟踪文件、且配置里有 `artifacts` 时，`build` 在该检出里运行并复用已安装依赖与构建缓存；否则在分支的新克隆里构建
+- 把 `artifacts` 打包成新 release 送到 box
+- box 切换到新 release 并重启应用服务
+- Amp 等待应用监听端口；没起来就回滚到上一个 release 并让部署失败
+
+box 保留线上 release 与前两个 release。服务应监听 `PORT` 环境变量给的端口。Amp 还会设置 `AMP_DEPLOYMENT_URL`（应用 URL）、`AMP_DEPLOYMENT_NAME`（应用名）、`AMP_DEPLOYMENT_BOX`（如 `alice/workbench`）与 `AMP_DEPLOYMENT_DATA_DIRECTORY`（数据库、上传等需跨部署保留的数据目录）。构建时能看到前三个，看不到数据目录与密钥。
+
+`source: false` 表示 release 只含 `artifacts`，因此每个服务的 `cwd` 必须在其中；不写时 release 还包含源码、Git 历史与已装依赖，box 上的线程可以读改运行中的代码。
+
+## 一个 box 跑多个应用
+
+用不同的应用名把另一个仓库部署到同一 box：
+
+```bash
+amp boxes deploy --on alice/workbench --name tiny-crm
+```
+
+每个应用有自己的 URL、服务、密钥与数据目录。应用的服务以该应用自己的 Linux 用户在 systemd 沙箱里运行，不能 sudo、不能装包，只能看到 `/home` 下自己的目录，只能写数据目录与 home，读不到其它应用的文件、密钥或进程。
+
+这分隔了文件，但**不是**应用之间的安全边界：它们共享 CPU、内存、磁盘、网络和已装软件，没有按应用限额，可以连到其它应用的端口与 box 上的服务（例如你装的数据库）。只有在你信任这些应用互相访问数据时才放在同一个 box；不信任的应用单独一个 box。
+
+应用与首次部署它的仓库绑定，从其它仓库部署会被拒绝。要迁移（例如进 monorepo），用 `--move` 从新检出部署，URL、数据、密钥与公开设置都保留：
+
+```bash
+amp boxes deploy --on alice/workbench --name tiny-crm --move
+```
+
+如果线上 release 里有提交、而新仓库的分支不包含它，迁移会被阻止。
+
+### 一个仓库多个应用
+
+仓库里每个应用是带自己 `.amp/box.yaml` 的目录，`build` 在该目录运行，`cwd` 与 `artifacts` 相对它。仓库根也可以是一个应用。每个应用的首次部署在它自己的目录里执行：
+
+```bash
+cd crm
+amp boxes deploy --on alice/workbench --name tiny-crm
+cd ../status
+amp boxes deploy --on alice/workbench --name status
+```
+
+Amp 部署离当前目录最近的 `.amp/box.yaml` 对应的应用，并在仓库根的 `.amp/box-deploy.json` 里以目录名保存目标：
+
+```json
+{
+  "targets": {
+    "crm": { "on": "alice/workbench", "name": "tiny-crm", "root": "crm" },
+    "status": { "on": "alice/workbench", "name": "status", "root": "status" }
+  }
+}
+```
+
+之后在某目录里 `amp boxes deploy` 就部署该目录的应用，`amp boxes deploy crm` 在检出任意位置都能用。应用记住自己的目录，把别的目录部署进去需要 `--move`。
+
+应用的 release 只含它的目录与仓库根的文件（如 workspace lockfile），其它应用的文件不会到它的 box。构建也只能看到这些路径；需要其它目录（如共享 package）时在 `include` 里列，相对应用目录：
+
+```yaml
+build: pnpm install --frozen-lockfile && pnpm --filter crm build
+include:
+  - ../packages/ui
+services:
+  web:
+    command: node build
+```
+
+## Box 与 Orb
+
+| | Orb | Box |
+| --- | --- | --- |
+| 用途 | agent 在线程里改代码 | 需要一直运行的应用 |
+| 运行时长 | 线程空闲时暂停 | 常开，或按日程开关 |
+| 数量 | 每条线程一个 | 一台机器跑多个应用与线程 |
+| URL | portal 预览 dev server | 每个应用一个 URL |
+| 价格 | 运行时按分钟 | 从 30 天 $18 起 |
+
+常见流程两者都用：在 orb 里做并评审改动，再部署到 box。box 从不自己构建代码；box 上的线程跑在它的 runner 上，直接改线上应用——想先评审就用 orb。
+
+## 个人 box 与工作区 box
+
+名字的第一段决定归属：
+
+- `alice/workbench` 是个人 box，只有你能看、能部署、能开线程
+- `acme/workbench` 是 `acme` 工作区的 box，每位成员都能看、部署、开线程；只有创建者与管理员能删除、开关、改日程、看费用
+
+每位成员都能在工作区 box 上跑代码，所以别放不该让成员看到的东西。工作区 box 需要企业版工作区，或带付款方式的 Teams 工作区。
+
+从 CI 重新部署时，用[服务账号](/collaborate/workspaces#服务账号)的 API key 作为 `AMP_API_KEY` 运行 `amp boxes deploy`。服务账号能部署到其工作区的 box 并在上面执行命令，像成员一样；但不能创建、删除、管理 box 或改它们的密钥。
+
+账号被停用时，其个人 box 会停止直到恢复；创建者被停用的工作区 box 继续为工作区运行，但 URL 与应用在线前不可用。删除账号会删除其个人 box 及数据。
+
+multiplayer 线程（包括共享 Space 启动的所有线程）可以列出、检查、部署到、在其所属工作区的 box 上执行命令，因为能提示它的人都是成员；它不能用个人 box 或其它工作区的 box。设为 **Only You** 的 Space 不是 multiplayer，其线程可以用你的个人 box——只想自己在一个 Space 里往个人 box 部署时，在 Edit Space 里把 **Shared with** 设为 **Only You**，而不是新建工作区 box。
+
+agent 也能为线程的工作区创建 box、改工作区 box 的日程、启动/停止/重命名、设置密钥与环境变量、创建或修改工作区的 Sign in with Amp 客户端，但每一项都要线程所有者或管理员在对话框里批准；线程里的其他同事不能批准。其它操作（如删除 box）需要非 multiplayer 的线程。
+
+管理员可以在工作区设置的 **Boxes** 里关闭 **Allow Users to Create Boxes**，成员就不能创建（已有 box 继续运行）。
+
+### 公开与私有应用
+
+应用 URL 默认公开，谁拿到都能打开。想限制为 box 所有者或工作区成员，用 `--private` 部署：
+
+```bash
+amp boxes deploy --private
+```
+
+访问者要先用浏览器登录 Amp。不带登录的请求（例如 webhook）到不了私有应用。后续部署保留该设置，并记在 `.amp/box-deploy.json` 的目标里。用 `--public` 恢复公开。
+
+管理员可以在 **Boxes** 设置里关闭 **Allow Public Box Apps**。
+
+## 规格与价格
+
+| 规格 | 内存 | 价格（30 天） |
+| --- | --- | --- |
+| 最小 | 2 GB | 约 $18 |
+| 中等 | 4 GB | 约 $35 |
+| 大 | 8 GB | 约 $70 |
+| 更大 | 16 GB | 约 $140 |
+
+按运行时间计费（不足 30 天按比例），暂停期间不收计算费但磁盘仍计费。可以设置每日开关时间（例如只在白天开），在不用的时段省钱。
+
+## 命令参考
+
+```bash
+amp boxes list
+amp boxes create <box>
+amp boxes deploy [target] [--on <box>] [--name <app>] [--create] [--private|--public] [--move]
+amp boxes logs [target]
+amp boxes secrets set <app> KEY=value
+amp boxes secrets list <app>
+amp boxes schedule <box> --on 08:00 --off 22:00
+amp boxes stop <box>
+amp boxes start <box>
+amp boxes delete <box>
+```
+
+## 限制
+
+- box 不自己构建：所有构建都在 orb 或 runner 上
+- 应用不能 sudo、不能装系统包；需要系统依赖就基于 box 现有的 Ubuntu 或改用自有主机
+- 应用之间不是安全边界
+- 只有 box 的 runner 能改线上应用；不要让关键数据只存在某个应用的数据目录之外

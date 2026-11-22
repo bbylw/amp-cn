@@ -1,0 +1,141 @@
+---
+title: 为 Orbs 优化代码库
+description: 让 agent 不必猜就能启动、运行、登录、测试并交付你的项目。
+sidebar:
+  order: 4
+  group:
+    label: Orbs
+---
+
+全新的 orb 里，agent 只知道三件事：orb 镜像、你的仓库，以及仓库里的指导文件。任何需要试错才能搞明白的东西都在消耗时间，而且猜错很常见。这一页列出那些能让 agent 一次做对的改动。
+
+不必手工做。在项目里开个线程，直接让 Amp 来改：
+
+```text
+为 orbs 优化这个仓库。加载 orb-setup 技能，从头到尾执行一遍。
+```
+
+## 清单
+
+| 建议 | 放在哪 |
+| --- | --- |
+| 只装 orb 缺少的东西 | `.agents/setup` |
+| 让 setup 快且可重复执行 | `.agents/setup` |
+| resume 保持简短 | `.agents/resume` |
+| 声明 dev server | `.amp/services.yaml` |
+| 加开发态登录和种子数据 | 应用代码、`.agents/setup`、`.amp/services.yaml` |
+| 写下快速、非交互的检查命令 | `AGENTS.md` |
+| 写下团队规矩 | `AGENTS.md`、`.agents/skills/` |
+| 密钥放 Amp，不进仓库 | 项目设置 |
+| 规划网络访问与 Git 体积 | 项目设置、Tailscale |
+| 用全新 orb 验证 | 新建线程 |
+
+## 从 orb 镜像开始
+
+Orb 已自带常见工具：Node.js、pnpm、Bun、Python、uv、Nix、Docker Engine、`gh`，以及带 Chrome 的 `agent-browser`。只装项目需要而镜像没有的东西——另一套运行时、数据库服务、系统库。每多装一样，setup 就慢一分。
+
+镜像里有工具也要按项目需求**锁版本**，因为镜像版本可能和你的不同。让 `.agents/setup` 安装项目锁定的版本（例如用 mise 读 `.tool-versions`），并用 frozen/locked 模式从已提交的锁文件安装依赖。
+
+Orb 跑 Debian 12 或 13。脚本添加 apt 源时，从 `/etc/os-release` 读版本代号，不要写死。
+
+## 让新 orb 一开始就绪
+
+提交一个可执行的 `.agents/setup`，用来装依赖、准备环境。Amp 托管 orb（以及支持快照的自托管后端）会把结果存成项目快照，之后的 orb 直接从准备好的状态启动。不能往仓库提交时，改用[预置脚本设置](/orbs/customizing)。
+
+**让 setup 可以重复执行。** 基线分支来了新提交，或项目共享配置变了，快照就过期；Amp 会在上一份快照之上再跑一次 setup（工作区项目往往在推送后后台执行，否则在下一个新 orb 里）。所以脚本必须容忍已存在的包、文件和数据库数据：安装前先检查，复制示例文件时不覆盖，迁移和种子数据要可重复。连着运行两遍来验证。
+
+**把 setup 控制在两分钟左右。** 超过 20 分钟 Amp 会中止。最近几次超过两分钟的线程会收到警告。提速办法：
+
+- 并行跑互不依赖的步骤，比如数据库安装和依赖安装
+- 打印每步耗时，`/home/user/.cache/amp/logs/setup.log` 里就能看出慢在哪
+- 把可复用的慢活（装依赖、生成代码、预热构建缓存）放进 setup，快照会保留这些文件
+
+**失败要响，且永不等待输入。** 脚本开头写 `set -euo pipefail`，给安装器加 `-y` 之类的参数。setup 失败时 orb 仍会启动，但不会保存快照，于是每个新 orb 都要重跑，直到脚本修好。
+
+**不要留下进程。** setup 退出时 Amp 会停掉它留下的一切。在 Amp 托管 orb 上，用 `sudo systemctl enable --now <unit>` 启动数据库或 Docker，这样从快照恢复的 orb 里它们仍在跑。dev server 用 `.amp/services.yaml` 声明。
+
+**凭据不要进 setup。** setup 能拿到工作区和项目的环境变量，而快照通常与项目成员共享。需要认证时用[项目级 OIDC 令牌](/orbs/secrets)，需要个人身份的事放到 `.agents/resume`。
+
+`.agents/setup` 的改动要在提交到基线分支后才生效。每种 orb 规格各有一份快照。项目带额外仓库时，只有主仓库的 `.agents/setup` 会运行，所以它也要负责 `../repos/` 下的仓库。
+
+## 唤醒时恢复状态
+
+orb 首次启动和每次唤醒时 Amp 都会运行 `.agents/resume`，最多等 10 秒。保持简短、可重复、不装东西。
+
+它适合需要"当前这个人"或"当前线程"的工作：连隧道、登录服务、挂载存储。在不保留内存的[自托管 orb](/orbs/self-hosted) 上，还得在 resume 里重启本地数据库；Amp 托管 orb 能跨暂停保留进程，不需要。
+
+## 让 agent 跑起你的应用
+
+把所有 dev server 声明在提交到仓库的 `.amp/services.yaml` 里。Amp 会把它们作为受管服务运行，线程里的任何人都能从 **Portal** 面板打开。Amp 托管 orb 上，服务还能跨暂停存活；打开声明过的 portal 会自动启动服务。
+
+- 每个服务监听 `$PORT`，并提供 `health` 路径，只有真正就绪时才返回成功
+- 运行时从 `PUBLIC_URL` 读公开源，不要把 portal 主机名写进配置
+- API 请求走前端 dev server 的代理，因为两个 portal 主机之间的浏览器请求不被支持
+- 把 `.amp/portals/` 加进 `.gitignore`，Amp 会往那里写生成文件
+
+启动需要多步时，把它们收进一条可重复执行的命令，并在 `AGENTS.md` 里点名。agent 不该去猜服务处于什么状态。
+
+## 让 agent 登录得进去
+
+OAuth、邮件链接、两步验证会同时卡住 agent 和评审者。加一条只在开发环境生效的路由，让浏览器能以便宜的测试用户身份登录，并用 `$AMP_USER_EMAIL` 把它设成 portal 的主链接。详见 [Portal 与桌面](/orbs/portals)。
+
+在 setup 里种可预测的测试数据：管理员、普通用户，以及足够展示每页的记录。agent 不该为了开始工作去注册账号或重置密码。手工难以到达的状态（比如全新用户）可以用 portal 链接准备，并放进一个 portal 文件夹。
+
+应用依赖第三方服务时，缺少密钥就用测试数据跑起来，这样全新 orb 在没人配密钥前也能启动。把这些开发路由和测试账号写进 `AGENTS.md`。
+
+## 让 agent 自己验收
+
+在 `AGENTS.md` 里列清格式、lint、类型检查、全量测试和单个测试文件的**确切命令**，并说明各自通常要跑多久，免得 agent 以为慢测试卡住了。
+
+命令必须自己结束。agent 的命令没有终端、输入被关闭，任何提示、分页器、等待按键的 watch 模式都会挂住。命令运行时环境里 `AGENT=amp`，脚本可以据此改变行为。
+
+测试要自给自足：用 setup 装好的服务，不要依赖共享云资源或某个人的凭据。
+
+默认 [Ship](/orbs/shipping) 流程每次推送前跑全量测试，所以套件耗时就是每次交付的一部分。套件太长时，可以给项目换更大的 [orb 规格](/orbs/sizes)、在项目密钥里配远端构建缓存，或在自定义 Ship 提示里指定更快的检查。
+
+agent 推送到 GitHub 后可以[跟踪 CI](/integrations/github)，修掉自己造成的失败。给 CI 任务起清楚的名字、让失败日志好读，会帮到它。
+
+做 UI 时，给 agent 一个能截图的东西（比如藏在 portal 后面的组件预览页）；把服务端日志、有条件的话浏览器控制台日志写进同一个文件。iOS 和 Mac 应用把 Xcode 版本钉在 `.xcode-version` 里，见 [macOS 卫星机](/orbs/mac)。
+
+## 告诉 agent 团队规矩
+
+用 [`AGENTS.md`](/customization/agents-md) 描述项目，让新 agent 能照着行事。根目录一份覆盖全仓库，每个包里的文件覆盖该包。写清：
+
+- 项目是什么、各部分怎么配合
+- 怎么启动、登录、测试
+- 日志写到哪里
+- agent 绝对不能做什么
+
+只对 orb 成立的事实，加一节 "In an Orb" 写进 `AGENTS.md`，或者让 setup 写进 `~/.config/amp/AGENTS.md`。orb 在那个路径自带一份默认文件，往里追加而不是覆盖；setup 会在旧快照上重跑，重复添加前先判断是否已存在。脚本可以用 `AMP_ORB=1` 判断自己在不在 orb 里。
+
+多步骤流程（启动 dev server、在浏览器里测试）提交成 [技能](/customization/skills) 放在 `.agents/skills/`。交付步骤（开 PR）则写进项目的 [Ship 提示](/orbs/shipping)。
+
+## 不存密钥也能授权
+
+值放 Amp 设置，不进仓库。所有 orb 都要的放项目值，只属于你的放个人值，令牌标成 secret。服务支持时优先用 OIDC 而不是长期密钥。
+
+提交一份示例环境文件，变量名与 Amp 里保存的一致，让 setup 复制但不覆盖。agent 借此能看出缺了哪些值。
+
+## 网络访问与 Git
+
+Orb 能访问互联网。Amp 托管 orb 的出站 IP 会变；要访问私有服务或只允许已知地址的 API，用 [Tailscale](/orbs/customizing) 连接 orb；被云 IP 拦截的网站，可走 [Orb 网络路由](/cli/runners)。
+
+一个 Amp 托管 orb 同时大约能保持 1,500 个出站连接，超了之后 orb 里任何进程的新连接都会失败（常表现为 `unexpected eof while reading` 之类的 TLS 错误），直到占用连接最多的进程退出。大多数工具远达不到，但每请求开一条连接的代理会：包存储为空时 `sfw pnpm install`（Socket Firewall）会开约 1,700 条。让这类工具用热缓存，或者在 orb 里不带它运行包管理器。
+
+Amp 会克隆基线分支的完整历史，1 MB 以上的文件版本按需取用；克隆超过 15 分钟即失败。大二进制文件别放进 Git 历史，或者按 [Git 历史](/orbs/customizing) 的说明开启 **Shallow Clone**。
+
+有些情况下（仓库在 GitHub.com、GitLab 之外的主机，或 Amp 读不到最新基线提交），Amp 会给每个项目成员各留一份快照并在每个新 orb 上跑 setup——这时快的 setup 脚本最值钱。
+
+自托管 orb 上，用[自带镜像](/orbs/self-hosted)预置每个项目都需要的工具（比如内部 CA 证书），项目相关的步骤留在 `.agents/setup`。
+
+## 验证它真的可用
+
+按新 agent 的视角验收。先把改动推到基线分支，再让 Amp 开几个不给任何提示的全新 orb：
+
+```text
+开三个全新的 orb 线程。一个给我管理页的截图，一个给一个没有测试的函数补测试，
+一个启动应用并以普通用户身份登录。不要提示它们我们的设置。
+跑完读每个线程，告诉我 agent 在哪里猜过，然后更新 AGENTS.md 或 setup 文件。
+```
+
+agent 猜错或卡住的地方，补进指导文件，再测一次。顺便看看 `/home/user/.cache/amp/logs/setup.log` 里哪些步骤慢。

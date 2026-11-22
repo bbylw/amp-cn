@@ -1,0 +1,91 @@
+---
+title: 反馈组件
+description: 在线上网站上圈选元素，让 Amp 直接开工。
+sidebar:
+  order: 7
+  group:
+    label: 工作区
+---
+
+反馈组件让团队在网站上圈选某个部件，直接让 Amp 改。你只需在站点加一个 script 标签，用 `?amp` 打开站点、连上 Amp、选中页面元素并逐条写评论；发送后 Amp 在你的项目里开一条线程，agent 在 [orb](/orbs) 里改。
+
+工作区项目与个人项目都支持；个人项目里只有你能发评论。部署在 [Box](/boxes) 上的应用不用加 script 标签，`amp boxes deploy --widget` 即可。
+
+## 设置
+
+你需要改项目设置的权限。
+
+1. 打开项目设置的 **Feedback Widget** 标签
+2. 读一下 **Widget Security** 提示
+3. 点 **Enable**，Amp 会生成 widget key 并显示 **Script Tag**
+4. 把 script 标签放进站点 HTML（例如每页的 `<head>`），然后部署
+5. 在 **Allowed Origins** 填入站点地址并点 **Add Origin**
+
+```html
+<script src="https://ampcode.com/w/pw_….js" async></script>
+```
+
+`/w/` 后面就是 widget key。站点不需要服务端代码或自己的登录，脚本里也不含项目名。
+
+如果站点发送 `Content-Security-Policy`，请在 `script-src` 与 `frame-src` 里允许 `https://ampcode.com`。
+
+### 允许的来源
+
+组件只在列表中的 origin 上工作。origin 是协议、主机与端口，例如 `https://example.com`；Amp 只保留你输入地址的 origin，所以 `https://example.com/pricing` 实际添加的是 `https://example.com`。
+
+- 必须是 `https://`；本地开发额外允许 `http://localhost`、`http://127.0.0.1`、`http://[::1]`（任意端口）
+- 每个站点分别添加（生产、预发各一条）；同一域下大量站点可用通配 origin
+- 不在列表里的站点打不开面板，Amp 也拒绝这些页面上的评论
+- **不要**添加 [portal](/orbs/portals) 地址：portal 页面用的是它自己的评论组件
+
+每个 origin 旁有按钮用 `?amp` 打开站点，方便立刻验证。
+
+### 通配来源
+
+`https://*.previews.example.com` 允许 `https://pr-123.previews.example.com`，不允许 `https://previews.example.com`（`*` 必须有内容）、`https://a.b.previews.example.com`（`*` 只代表一段）、`http://…`（协议不同）或带不同端口的地址（端口要写进通配符里）。
+
+为防止覆盖别人的站点，Amp 会拒绝：非 https、`*` 不在第一段或出现多次（`https://*`、`https://pr-*.example.com`、`https://*.*.example.com`）、主机不足三段（`https://*`、`https://*.com`）、`*.` 之后是公共后缀（`*.co.uk`、`*.github.io`）、Amp 自己服务站点的域（`*.onamp.dev`），以及某个已激活自定义域之上的通配（如 `*.portal.example.com`）。只给你的团队完全掌控的域加通配。
+
+### 共享主机上的预览环境
+
+有些主机把预览放在自己域下（`https://my-app-pr-12.onrender.com`），Amp 会拒绝 `https://*.onrender.com` 这类通配，因为该域是公共后缀。办法有两个：
+
+- **把预览放到你自己的域**（如 `pr-12.previews.example.com`），再加一个通配 origin
+- **逐个添加预览的精确 origin**，预览删除时一并移除（`amp projects feedback-widget remove-origin`）
+
+## 发送反馈
+
+打开 `?amp`，连上 Amp，选择页面元素、逐个写评论，然后发送。Amp 在项目里开始一条线程，把每条评论与选中的元素、页面位置（应用能提供时还有源码位置）一起交给 agent。
+
+## 显示或隐藏
+
+用 `?amp` 打开即显示；团队之外的人看不到组件，除非你把他们的 origin 加进列表。需要按环境隐藏时，不注入 script 标签即可。
+
+## 权限
+
+- 改设置需要项目设置权限（工作区项目：创建者或管理员；个人项目：所有者）
+- 发评论需要能访问该项目的线程：工作区项目里是有权限的项目成员，个人项目里只有你
+
+## 站点安全
+
+组件在你的站点上运行，因此 Amp 只接受允许列表里的 origin，并拒绝这些页面上发出的评论。不要在不可信的页面上启用。
+
+## 关闭
+
+在 **Feedback Widget** 标签点 **Disable** 即可；已有的 script 标签不再工作。
+
+## 用 CLI 或让 Amp 代劳
+
+```bash
+amp projects feedback-widget enable <project>
+amp projects feedback-widget disable <project>
+amp projects feedback-widget add-origin <project> --origin https://example.com
+amp projects feedback-widget list-origins <project>
+amp projects feedback-widget remove-origin <project> --origin https://example.com
+```
+
+也可以在线程里让 Amp 做这些。
+
+## 限制
+
+每个项目的来源数量、评论长度等有限制，具体在设置页会提示。组件不适合当作面向终端用户的反馈渠道——它是给团队用的。

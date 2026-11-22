@@ -1,0 +1,36 @@
+---
+title: 报告 Bug 与诊断
+description: 把问题连同线程状态、客户端日志和设置一起发给 Amp 团队。
+sidebar:
+  order: 2
+---
+
+遇到 bug 就发一份报告：里面包含你的描述和诊断数据（线程状态、客户端日志、设置），这些能帮我们定位问题。
+
+## 报告一个 Bug
+
+在 ampcode.com 或 macOS / iOS 应用里：
+
+1. 打开线程标题栏的 **⋯** 菜单
+2. 选 **Report Bug…**
+3. 描述问题并提交
+
+在 Amp CLI 里，打开命令面板（`Ctrl+O`），选 `feedback: report bug`，描述后提交。
+
+`amp --no-tui` 的 runner 里按 `Ctrl+R`；runner 停止后也可以在其目录下运行：
+
+```bash
+amp report-bug "describe the bug"
+```
+
+在 orb 里，同一条命令报告的是该 orb 的线程，所以可以直接让 agent 帮你发。`amp report` 和 `amp diagnostics` 都是 `amp report-bug` 的别名。
+
+报告直接发给 Amp 团队，不需要复制或转交报告 ID。需要更多细节或有进展时，我们会通过邮件回复。诊断数据 7 天后删除。
+
+## 反馈与功能请求
+
+反馈或功能请求直接告诉 [Puck](/workspace/puck)，可以附上线程链接。
+
+## 语音听写问题
+
+在 ampcode.com 打开命令面板，选 `Open Dictation Diagnostics`，挑一段录音，然后 **Upload Report**。

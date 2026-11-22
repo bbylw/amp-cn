@@ -1,0 +1,63 @@
+---
+title: Google
+description: 连接 Gmail、Calendar、Docs、Sheets 与 Drive，并逐项选择权限。
+sidebar:
+  order: 3
+  group:
+    label: 集成
+---
+
+连上 Google 账号后，Amp 可以读写你的 Gmail、Google Calendar、Docs、Sheets 和 Drive。每项服务你各自选择权限级别，Amp 只向 Google 申请这些级别需要的权限。
+
+## 连接 Google
+
+Amp 通过**你工作区自己的 Google Cloud 项目**里的 OAuth 客户端连接，所以要先由工作区管理员配置客户端。之后打开 **Settings → Integrations & MCP**，在 **Google** 卡片上为每项服务选权限，再点 **Connect Google** 并在 Google 里批准。
+
+新连接默认：Gmail 为 **Read, Organize, and Draft**，Calendar 为 **Read and Write with Approval**，Docs / Sheets / Drive 为 **Read**。连接前可以改；连接后想改权限，重新选级别并点 **Change Access**。
+
+降低权限时 Amp 会删掉整个 Google 连接，再请你批准更小的权限集——Google 不允许应用只归还部分权限。
+
+也可以在线程里问 Amp 现在有什么权限、要求降权或改 multiplayer 设置，每次改动都要你在对话框里批准；**提升**权限时 Amp 会把你送到 Google 卡片，因为需要 Google 同意。工作区管理员可以在工作区设置的 Integrations 里为所有成员关闭 Google 连接。
+
+## 发邮件与改日历前先问
+
+Gmail 与 Calendar 都有"先问你"的级别：
+
+- Gmail **Read, Organize, and Draft** — Amp 会起草邮件，但每封都先给你看，编辑批准后才发
+- Calendar **Read and Write with Approval** — 每个新建、修改、删除或回复邀请都先展示，批准后才执行
+
+这是新连接的默认。只有你选择 Gmail **Read, Organize, and Send** 或 Calendar **Read and Write** 时它才会不问就发；即便如此，你也可以在线程里要求它先确认。这两对级别的 Google 权限相同，所以互换只是保存你在 Amp 里的选择，不会再跳 Google。
+
+## Gmail 过滤器
+
+在 **Read and Organize** 及以上，Amp 可以创建和删除 Gmail 过滤器（比如跳过某发件人的收件箱、或让某些邮件永不进垃圾箱）。它会说明每个过滤器匹配什么、做什么，并且**每次都先问**，与权限级别无关。**Read** 级别只能列出过滤器。
+
+过滤器需要单独权限。若你在 Amp 支持过滤器之前就连接了 Google，在 **Google** 卡片点 **Allow Filters** 并在 Google 批准。
+
+## Multiplayer 线程
+
+在 [multiplayer](/collaborate/multiplayer) 线程里，其他成员也能给 agent 发提示，而 Google 工具是以线程所有者身份行事的。所以 multiplayer 期间 Amp 会关闭该线程的 Google 工具（对所有者也是），结束后恢复。想让贡献者使用，就在 **Google** 卡片打开 **Use in Multiplayer Threads**。这防的是误用而非有意的成员。
+
+## 配置工作区的 Google OAuth 客户端
+
+成员用你工作区自己的 Google Cloud 项目中的 OAuth 客户端连接。组织拥有该客户端、控制谁能用，并可随时在 Google Cloud 里停用。
+
+在工作区设置的 **Integrations → Google** 卡片点 **Set Up Client**，填入项目 ID，Amp 会把 ID 填进每条命令和链接。
+
+### 谁能连接
+
+用客户端的 **Audience** 决定：
+
+- **仅 Google Workspace 账号**（**Internal**）—— 只有你组织内的人能连；Google 无需审核，没有警告，也没有用户上限，项目必须属于你的组织
+- **也允许个人账号**（**External**）—— 任何你允许的 Google 账号都能连，需要发布/验证客户端
+
+### 建项目、开 API、建客户端
+
+1. 在 Google Cloud 新建（或复用）项目，开启 Gmail、Calendar、Drive、Docs、Sheets API
+2. 配置 OAuth 同意屏幕（名称、支持邮箱、受众、测试用户或发布）
+3. 创建 **Web application** 类型的 OAuth 客户端，把 Amp 给出的回调地址填进 **Authorized redirect URIs**
+4. 把 Client ID 与 Client Secret 填回工作区设置的 Google 卡片并保存
+
+### 更换或移除客户端
+
+更新 Client ID/Secret 后保存即可；移除客户端会让成员需要重新连接。停用 Google Cloud 里的客户端会立即切断所有已连接账号。

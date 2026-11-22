@@ -1,0 +1,163 @@
+---
+title: 定制 Orbs
+description: 用 setup 与 resume 脚本准备每一个新 orb。
+sidebar:
+  order: 3
+  group:
+    label: Orbs
+---
+
+orb 的生命周期由两个可执行文件定制：
+
+- `.agents/setup` — 准备新的项目 orb 和用于启动它们的快照
+- `.agents/resume` — 在 orb 激活后以及每次唤醒后做认证、修复或重连
+
+两个文件都可选，需要提交进仓库。Amp 可能多次运行它们，所以脚本在改动之前要先检查现状。也可以直接让 Amp 来写。
+
+项目设置的 **Orb** 里还能配置不放进仓库的脚本：
+
+- **Pre-clone script** — 在克隆或更新仓库之前，从 `/home/user/workspace` 运行，用于访问仓库所需的前置条件；失败会中止 orb 准备
+- **Pre-setup script** — 每次 setup 前立即运行
+
+pre-clone、pre-setup 和 `.agents/setup` 都能签发 project 或 workspace 范围的 OIDC 令牌，因此不必存长期密钥就能认证共享服务，见[密钥管理](/orbs/secrets)。
+
+## Orb 生命周期
+
+快照是"准备好的 orb"的存档，含仓库和 `.agents/setup` 改过的一切（比如装好的软件）。Amp 用快照避免每个新线程重复同样的准备。
+
+启动项目 orb 时：
+
+1. Amp 查找所选规格的项目快照
+2. 如果快照与主仓库基线分支的最新提交、各附加仓库默认分支的最新提交，以及项目共享配置（工作区/项目环境变量与密钥、pre-clone、pre-setup）都匹配，就恢复快照并跳过 `.agents/setup`。GitHub.com、GitLab 和用默认分支的 Amp 托管仓库能做这个检查；其它情况会恢复快照并继续第 3 步
+3. 没有匹配快照时，从基础或较旧的快照启动，运行 pre-clone，克隆或更新仓库，然后在仓库根目录运行 pre-setup 和 `.agents/setup`
+4. setup 成功，就把准备好的 orb 存成新的项目快照
+5. 应用当前线程的环境与工作负载身份凭据
+6. 运行 `.agents/resume`，然后启动 agent
+
+基线分支的新提交或共享配置变化会让快照过期，Amp 会刷新：恢复旧快照、更新仓库、在已有文件之上重跑 pre-setup 和 `.agents/setup`，再存成新快照。工作区项目往往在推送后后台执行，否则由下一个新 orb 完成。这就是 setup 必须可重复的原因。其它分支的提交不会刷新快照，所以 `.agents/setup` 的改动要进基线分支才生效。
+
+同一次基础镜像构建之上的快照最多复用 72 小时，中间刷新不会重置计时；超过后下一个快照从基础镜像开始，新的 orb 镜像版本也在那时到达项目。需要立刻从干净镜像重跑 setup（比如从 setup 里删除了某个包），就在项目设置里删掉缓存快照：
+
+```bash
+amp projects snapshots list <project>
+amp projects snapshots delete <project> --resource a1.small
+```
+
+省略 `--resource` 会删掉该项目的全部快照。
+
+仓库在其它 Git 主机、Amp 托管仓库设了 **Base Branch**、或 Amp 读不到基线最新提交（例如没连 GitLab）时，Amp 为每个项目成员各留一份快照并在恢复后运行 setup，新 orb 会更慢；这条路径上的 setup 使用该成员自己的环境（含个人变量与密钥），快照不与他人共享。
+
+已有 orb 唤醒时，Amp 恢复它的执行器并再跑一次 `.agents/resume`。
+
+## Git 历史
+
+Amp 克隆每个仓库检出分支的完整历史，agent 可以直接 `git log`、`git blame`、`git merge-base`；要别的分支就 `git fetch`。为了让克隆快，Amp 跳过 1 MB 以上的文件版本，直到某个 Git 命令真的需要。
+
+仓库特别大时，首次完整克隆可能要很多分钟，而克隆超过 15 分钟 orb 会启动失败。克隆慢就在项目设置的 **Orb → Advanced** 打开 **Shallow Clone**：新 orb 只克隆最新提交，agent 需要时再取旧历史。快照与预热 orb 会在下次刷新时切换到这个设置。
+
+## `.agents/setup`
+
+在仓库根目录放一个可执行的 `.agents/setup`，用来安装每个 orb 都需要的依赖和软件，也可以生成文件或检查工具是否可用。
+
+多仓库项目里，附加仓库检出在相对主仓库根目录的 `../repos/` 下；Amp 只运行主仓库的 `.agents/setup`，其它仓库的初始化也要由它触发。
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+pnpm install --frozen-lockfile
+[ -f .env.local ] || cp -- .env.example .env.local
+```
+
+提交可执行位：
+
+```bash
+chmod +x .agents/setup
+git add .agents/setup
+```
+
+setup 要快且幂等：人和 agent 再跑一遍都不该破坏环境。Amp 在 20 分钟后停止 setup（含 pre-setup 耗时）并继续启动 orb；setup 失败或超时不会发布新快照，之后的新 orb 可能再跑一遍。
+
+setup 的结果可能被存成快照共享给其它线程或项目成员。它能拿到工作区和项目的环境变量与密钥，但**拿不到个人值**（按成员快照的路径除外），也拿不到个人或线程级工作负载身份；需要稳定身份时签发 project 或 workspace 范围的令牌：
+
+```bash
+amp orb id-token \
+  --audience https://service.example.com \
+  --subject-scope project
+```
+
+setup 的请求凭据在 pre-clone 之前可用，Amp 在保存快照前移除。**不要**在 setup 期间把令牌、云厂商凭据或登录缓存复制到别的文件；需要用户或线程身份的服务放到 `.agents/resume` 认证，那里会拿到新的运行时凭据。
+
+共享快照**不会**保留 setup 写入 `~/.bashrc`、`~/.bash_profile`、`~/.profile`、`~/.bash_login`、`~/.bash_logout` 的内容，只保留这些文件加到 `PATH` 的目录（例如 Rust 的 `~/.cargo/bin` 仍在 `PATH` 上）。别名、shell 函数、`eval "$(mise activate bash)"` 这类内容不会进入从共享快照恢复的 orb；每个 orb 都需要时，放到 `.agents/resume` 里加。
+
+不要在 `.agents/setup` 里启动 dev server 或其它长驻进程：脚本退出时 Amp 会停掉它留下的一切（包括 `&`、`nohup`、`setsid` 启动的，以及工具自己拉起的守护进程），这些都不会进快照。替代做法：
+
+- 需要长期运行的服务写进 `.amp/services.yaml`（不必非要 portal），见 [Portals](/orbs/portals)
+- 包安装的系统服务（比如数据库）用 `sudo systemctl enable --now <unit>`，由 systemd 托管，能跨 setup 退出并在从快照恢复的 orb 里自动启动。Tailscale 则放在 `.agents/resume` 里启动和认证，免得快照里带上机器身份
+- 慢但有限的活（下载字体、预热缓存）就前台跑完，让 setup 等它
+- 只需要在有人打开 portal 前完成的活，放到 `.agents/resume`：它启动的进程在脚本退出后继续运行，且不会被停止；记得把脚本写成幂等的，因为每次唤醒都会再跑
+
+## 安装软件
+
+orb 跑 Debian 12 或 13。需要版本号的脚本（比如 apt 源）应从 `/etc/os-release` 读取，不要写死。orb 已包含常见开发工具：
+
+- `amp` 与 `gh`（orb 激活后完成认证）
+- `glab`（连了 GitLab 后登录）
+- Git、SSH、tmux
+- Bun、Node.js、npm、pnpm、Yarn
+- Python、pip、`uv`
+- Nix
+- Docker Engine
+- `agent-browser` 与 Chrome for Testing
+- ffmpeg、ImageMagick、jq、fzf、ripgrep、vim、unzip、zstd、lsof、websocat
+
+pre-clone、pre-setup 和 `.agents/setup` 拿不到你的个人 GitHub 凭据，所以这些脚本运行期间 `gh` 未认证；需要当前用户 GitHub 认证的命令放到 `.agents/resume`。
+
+把项目依赖和每个 orb 都需要的软件装进 `.agents/setup`，并在安装前检查命令是否已存在，让重复运行保持快：
+
+```bash
+if ! command -v shellcheck >/dev/null 2>&1; then
+	sudo apt-get update
+	sudo apt-get install -y shellcheck
+fi
+```
+
+在终端里手动装的软件只在那一个 orb 里有效；以后还需要就写进 `.agents/setup`。
+
+### Docker
+
+Amp 托管 orb 已装 Docker Engine，但守护进程没启动。需要时启动，并用 `sudo` 运行 Docker 命令：
+
+```bash
+sudo systemctl start docker
+sudo docker run hello-world
+```
+
+希望每个 orb 都带守护进程，就在 `.agents/setup` 里加 `sudo systemctl enable --now docker`——systemd 托管它，setup 退出后仍在跑，从快照恢复的 orb 里也在。
+
+Docker Compose 和 Buildx 未安装，但 Docker 的 apt 源已配好：
+
+```bash
+if ! sudo docker compose version >/dev/null 2>&1; then
+	sudo apt-get update
+	sudo apt-get install -y docker-compose-plugin docker-buildx-plugin
+fi
+```
+
+要共享容器里的 web 服务，用 `-p` 发布端口，再用 [portal](/orbs/portals) 暴露该端口。
+
+## 配置 Git
+
+GitHub 仓库在 orb 里不需要额外 Git 配置：Amp 用你的 GitHub 连接克隆、抓取、推送，提交归属与签名由你的 Git 身份和签名设置决定，详见 [GitHub 与 Git](/integrations/github)。
+
+GitLab、Bitbucket 等 HTTPS 主机也支持：公开仓库只要 HTTPS 克隆地址；私有仓库需要凭据，推送需要写权限。GitLab 建议直接[连接 GitLab](/integrations/gitlab)，orb 里 `glab` 已是登录状态，不必把令牌放进项目密钥。其它主机可以在项目设置里配置 Git 凭据（比如把用户名与 token 写进 `~/.git-credentials` 并设置 `credential.helper store`），用 `GIT_CONFIG_*` 环境变量声明也有效。只有写权限的凭据才能 Ship/Push，GitHub 的 PR 与 CI 集成对其它主机不适用。
+
+## 判断自己在不在 orb 里
+
+脚本可以检查环境变量 `AMP_ORB=1`。
+
+## 预置脚本与日志
+
+**Pre-setup script** 每次 setup 前运行，适合放那些不能提交进仓库的准备步骤。**Workspace resume script** 则在工作区级别对所有项目生效。
+
+setup 与 resume 的日志在 `/home/user/.cache/amp/logs/` 下（`setup.log`、`resume.log`），排查慢步骤或失败原因时先看这里。

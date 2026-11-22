@@ -1,0 +1,153 @@
+---
+title: 插件 API
+description: "`@ampcode/plugin` 的表面：事件、命令、工具、UI 与类型。"
+sidebar:
+  order: 5
+  group:
+    label: 参考
+---
+
+设置与能力介绍见[插件](/customization/plugins)。本页是 `@ampcode/plugin` 的 API 概览与一个完整示例。
+
+插件是放在 `.amp/plugins/*.ts` 的 TypeScript 模块，默认导出一个接收 `PluginAPI` 的函数。改完后在命令面板运行 `plugins: reload` 即可生效，不需要重启 Amp。插件也能全局安装，见[全局插件与技能](/customization/global-plugins)。
+
+## 示例：Kitchen Sink
+
+```ts
+import type { PluginAPI } from '@ampcode/plugin'
+
+const marker = '[kitchen-sink]'
+
+export default function (amp: PluginAPI) {
+  amp.logger.log(`${marker} plugin initialized`)
+
+  amp.on('session.start', async (event, ctx) => {
+    await ctx.ui.notify(`Kitchen sink session.start for ${event.thread.id}.`)
+  })
+
+  amp.on('tool.call', async (event, ctx) => {
+    ctx.logger.log(`tool.call: ${event.tool}`)
+
+    const shellCommand = amp.helpers.shellCommandFromToolCall(event)
+    const files = amp.helpers.filesModifiedByToolCall(event)
+    ctx.logger.log(
+      `helper summary: shell=${shellCommand?.command ?? 'none'} files=${
+        files?.map((file) => amp.helpers.filePathFromURI(file)).join(', ') ?? 'none'
+      }`,
+    )
+
+    if (event.tool === 'kitchen_sink_tool') return { action: 'allow' }
+
+    const confirmed = await ctx.ui.confirm({
+      title: `Allow ${event.tool}?`,
+      message: 'Kitchen sink observed a tool call.',
+      confirmButtonText: 'Allow',
+    })
+
+    return confirmed ? { action: 'allow' } : { action: 'deny', reason: 'Declined in kitchen sink' }
+  })
+
+  amp.registerCommand(
+    'show-kitchen-sink-runtime',
+    {
+      title: 'Show kitchen sink runtime',
+      category: 'kitchen-sink',
+      description: 'Show configuration, shell, and system information.',
+    },
+    async (ctx) => {
+      const config = await amp.configuration.get()
+      const pwd = await amp.$`pwd`
+      await ctx.ui.notify(
+        [
+          `Amp URL: ${amp.system.ampURL}`,
+          `User: ${amp.system.user?.email ?? '(not authenticated)'}`,
+          `Executor: ${amp.system.executor.kind}`,
+          `Working directory: ${pwd.stdout.trim()}`,
+          `Config keys: ${Object.keys(config).sort().join(', ') || '(none)'}`,
+        ].join('\n'),
+      )
+    },
+  )
+
+  amp.registerTool({
+    name: 'kitchen_sink_tool',
+    title: 'Echo message',
+    transcriptGroup: { active: 'Using kitchen sink', complete: 'Used kitchen sink' },
+    description: 'Returns a short message proving the plugin tool ran.',
+    inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+    async execute() {
+      return { content: [{ type: 'text', text: 'kitchen sink tool ran' }] }
+    },
+  })
+}
+```
+
+## 事件
+
+`amp.on(name, handler)` 订阅事件，`handler` 收到 `(event, ctx)`。
+
+| 事件 | 说明 |
+| --- | --- |
+| `session.start` | 会话开始（新线程或恢复） |
+| `tool.call` | agent 即将调用工具，可 `allow` / `deny` / 修改输入 |
+| `tool.result` | 工具返回后，可观察或改写结果 |
+| `agent.start` | 一个 agent（含子 agent）开始 |
+| `agent.end` | agent 结束 |
+| `changes.prompt` | 询问 agent 对工作区改动的说明（例如改了什么、为什么） |
+
+`PluginEventMap` 给出每个事件的载荷类型，`PluginRequestResultMap` 给出需要返回值的事件的结果类型（`tool.call`、`tool.result`、`agent.start`、`agent.end`、`changes.prompt`）。
+
+`tool.call` 的返回值：
+
+```ts
+type ToolCallResult =
+  | { action: 'allow' }
+  | { action: 'deny'; reason?: string }
+  | { action: 'modify'; input?: Record<string, unknown> }
+```
+
+## 命令
+
+```ts
+amp.registerCommand(id, { title, category, description }, async (ctx) => { … })
+```
+
+命令出现在命令面板里。`ctx` 提供 `ctx.ui`、`ctx.logger`、`ctx.thread`、`ctx.system` 等。
+
+## 工具
+
+`amp.registerTool({ name, title, description, inputSchema, transcriptGroup, execute })` 注册后模型可以调用；`inputSchema` 是 JSON Schema，`execute` 返回 MCP 形状的结果（`content` 数组，可选 `isError`）。
+
+插件也可以用 `amp.tools.call(name, input)` 在当前线程里**直接**执行工具（内置、插件工具，或 `tool_search` 得到的 MCP 工具），不经过模型；权限与确认照常生效。子 agent 工具与长时间等待不支持，调用不会写进对话记录，也不会在断线后自动重试。
+
+## UI
+
+`ctx.ui` 提供：
+
+- `notify(message)` —— 通知
+- `input({ title, helpText, initialValue, submitButtonText })` —— 文本输入，返回字符串或 `undefined`
+- `select({ title, message, options, allowOther })` —— 单选
+- `confirm({ title, message, confirmButtonText })` —— 确认，返回布尔
+
+`ctx.system.open(url)` 打开链接；`amp.$` 是执行 shell 的模板标签（返回 `{ stdout, stderr }`）；`amp.configuration.get()` 读取配置；`amp.system` 提供 `ampURL`、`user`、`executor`。
+
+## 辅助函数
+
+- `amp.helpers.shellCommandFromToolCall(event)` —— 从工具调用里提取 shell 命令
+- `amp.helpers.filesModifiedByToolCall(event)` —— 提取被修改的文件 URI
+- `amp.helpers.filePathFromURI(uri)` —— URI 转路径
+- `amp.helpers.linkify({ pattern, href })` —— 把文本里的匹配变成链接（`{{match}}`、`{{name}}` 会被 URL 编码替换，结果须是 http(s) URL 或 Amp 路径）
+
+## 类型
+
+```bash
+npm install -D @ampcode/plugin
+```
+
+完整类型参考由包内生成的 `.d.ts` 提供（`PluginAPI`、`PluginEventMap`、`PluginRequestResultMap`、`PluginTools` 等）。改动后运行 `plugins: reload` 让类型与实现重新加载。
+
+## 限制
+
+- 插件跑在 Amp 进程里，能执行 shell 与读写文件，只安装你信任的插件
+- 需要 UI 的操作在无 TUI 的环境（如 runner 的 `--no-tui`）里可能不可用，先检查 `ctx.ui` 相关调用
+- 权限与确认不会被插件绕过，`allow` 只能用于本就会被允许的调用
